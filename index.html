@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #fafaf9;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    color: #1a1a1a;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px; }
+  header h1 { font-size: 22px; margin: 0; }
+  header p { color: #666; font-size: 14px; margin: 4px 0 0; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e2e2e2; margin: 24px 0 20px; flex-wrap: wrap; }
+  .tab { padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: #666; border-bottom: 2px solid transparent; }
+  .tab.active { color: #0f6b47; border-bottom-color: #0f6b47; }
+  .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #666; margin: 24px 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px; }
+  th { text-align: left; padding: 8px 10px; background: #f5f5f4; font-weight: 600; color: #555; border-bottom: 1px solid #e2e2e2; }
+  td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+  .badge.ok { background: #e6f4ea; color: #0f6b47; }
+  .badge.reorder { background: #fdecea; color: #b3261e; }
+  form.card { display: grid; gap: 12px; max-width: 480px; margin-bottom: 24px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: #444; }
+  input, select, textarea { padding: 8px 10px; border: 1px solid #d5d5d5; border-radius: 6px; font-size: 14px; font-family: inherit; }
+  button.btn { padding: 9px 16px; border: none; border-radius: 6px; background: #0f6b47; color: white; font-weight: 600; font-size: 14px; cursor: pointer; width: fit-content; }
+  button.btn:disabled { background: #a9c9bb; cursor: not-allowed; }
+  button.btn.secondary { background: #eee; color: #333; }
+  .subtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .subtabs button { padding: 6px 12px; border: 1px solid #d5d5d5; background: white; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .subtabs button.active { background: #0f6b47; color: white; border-color: #0f6b47; }
+  .qty-row { display: grid; grid-template-columns: 1fr 90px 70px; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+  .qty-row input { width: 100%; }
+  .qty-row.header-row { font-weight: 600; color: #666; font-size: 12px; border-bottom: none; }
+  .msg { font-size: 13px; padding: 8px 10px; border-radius: 6px; margin-bottom: 12px; }
+  .msg.success { background: #e6f4ea; color: #0f6b47; }
+  .msg.error { background: #fdecea; color: #b3261e; }
+  .empty { color: #888; font-size: 13px; }
+  .row-actions { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ECOVEX Inventory</h1>
+    <p>Live stock, purchases, kit issuance &amp; employee records</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="stock">Stock</button>
+    <button class="tab" data-tab="purchase">Log Purchase</button>
+    <button class="tab" data-tab="issue">Issue Kit</button>
+    <button class="tab" data-tab="employees">Employees</button>
+  </div>
+
+  <div id="content"></div>
+</div>
+
+<script>
+// ---- CONFIGURE ONCE ----
+const SUPABASE_URL = "https://rppdpyvxobaozpgnybwz.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_HvpIyQY7BcEkAzn1uF-idw_hjQh3-3E";
+// -------------------------
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const content = document.getElementById('content');
+const tabButtons = document.querySelectorAll('.tab');
+let currentTab = 'stock';
+
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    render();
+  });
+});
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function render() {
+  if (currentTab === 'stock') return renderStock();
+  if (currentTab === 'purchase') return renderPurchase();
+  if (currentTab === 'issue') return renderIssue();
+  if (currentTab === 'employees') return renderEmployees();
+}
+
+// ---------------- STOCK ----------------
+async function renderStock() {
+  content.innerHTML = '<p class="empty">Loading stock…</p>';
+  const [{ data: materials, error: e1 }, { data: solutions, error: e2 }] = await Promise.all([
+    db.from('stock_materials').select('*').order('material_name'),
+    db.from('stock_solutions').select('*').order('solution_name'),
+  ]);
+
+  if (e1 || e2) {
+    content.innerHTML = `<div class="msg error">${escapeHtml((e1 || e2).message)}</div>`;
+    return;
+  }
+
+  const reorderCount = materials.filter(m => m.status === 'Reorder').length + solutions.filter(s => s.status === 'Reorder').length;
+
+  let html = '';
+  if (reorderCount > 0) {
+    html += `<div class="msg error">⚠ ${reorderCount} item${reorderCount > 1 ? 's' : ''} at or below reorder level</div>`;
+  }
+  if (materials.length === 0 && solutions.length === 0) {
+    html += `<p class="empty">No items yet. Add some under Log Purchase → Add New Item.</p>`;
+  }
+
+  html += `<div class="section-title">Materials Stock</div>
+  <table><thead><tr><th>Item</th><th>Unit</th><th>Purchased</th><th>Issued</th><th>Available</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
+  materials.forEach(m => {
+    html += `<tr><td>${escapeHtml(m.material_name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.total_purchased}</td><td>${m.total_issued}</td><td>${m.available_stock}</td><td>${m.reorder_level}</td>
+    <td><span class="badge ${m.status === 'OK' ? 'ok' : 'reorder'}">${m.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
+  });
+  html += `</tbody></table>`;
+
+  html += `<div class="section-title">Solutions Stock (Litres)</div>
+  <table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
+  solutions.forEach(s => {
+    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${s.reorder_level_l}</td>
+    <td><span class="badge ${s.status === 'OK' ? 'ok' : 'reorder'}">${s.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
+  });
+  html += `</tbody></table>`;
+
+  content.innerHTML = html;
+}
+
+// ---------------- PURCHASE ----------------
+let purchaseMode = 'material'; // material | solution | additem
+
+async function renderPurchase() {
+  const { data: materials } = await db.from('materials').select('id,name').order('name');
+  const { data: solutions } = await db.from('solutions').select('id,name').order('name');
+
+  let html = `<div class="subtabs">
+    <button data-mode="material" class="${purchaseMode === 'material' ? 'active' : ''}">Materials Purchase</button>
+    <button data-mode="solution" class="${purchaseMode === 'solution' ? 'active' : ''}">Solutions Log</button>
+    <button data-mode="additem" class="${purchaseMode === 'additem' ? 'active' : ''}">+ Add New Item</button>
+  </div><div id="purchase-msg"></div>`;
+
+  if (purchaseMode === 'material') {
+    html += `<form class="card" id="material-form">
+      <label>Item Name
+        <select name="material_id" required>
+          <option value="">Select item…</option>
+          ${materials.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}
+        </select>
+      </label>
+      <label>Purchase Date<input type="date" name="purchase_date" value="${todayStr()}" required></label>
+      <label>Quantity<input type="number" name="quantity" min="0" step="1" required></label>
+      <label>Supplier / Source<input type="text" name="supplier"></label>
+      <label>Invoice / Ref No.<input type="text" name="invoice_ref"></label>
+      <label>Unit Cost (₹)<input type="number" name="unit_cost" min="0" step="0.01"></label>
+      <label>Remarks<textarea name="remarks" rows="2"></textarea></label>
+      <button class="btn" type="submit">Log Purchase</button>
+    </form>`;
+  } else if (purchaseMode === 'solution') {
+    html += `<form class="card" id="solution-form">
+      <label>Solution Name
+        <select name="solution_id" required>
+          <option value="">Select solution…</option>
+          ${solutions.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('')}
+        </select>
+      </label>
+      <label>Type
+        <select name="log_type">
+          <option value="Purchased">Purchased</option>
+          <option value="Prepared">Prepared</option>
+        </select>
+      </label>
+      <label>Date<input type="date" name="log_date" value="${todayStr()}" required></label>
+      <label>No. of Bottles<input type="number" name="bottles" min="0" step="1" required></label>
+      <label>Batch / Ref<input type="text" name="batch_ref"></label>
+      <label>Cost / Notes<input type="text" name="cost_notes"></label>
+      <label>Prepared By<input type="text" name="prepared_by"></label>
+      <button class="btn" type="submit">Log Solution Entry</button>
+    </form>`;
+  } else {
+    html += `
+      <div class="section-title">Add a new material</div>
+      <form class="card" id="new-material-form">
+        <label>Item Name<input type="text" name="name" required></label>
+        <label>Unit<input type="text" name="unit" value="Pcs" required></label>
+        <label>Reorder Level<input type="number" name="reorder_level" min="0" step="1" value="5" required></label>
+        <label>Complete-Kit Qty <span style="font-weight:400;color:#888">(how many go in a new employee's starter kit — 0 if not part of it)</span>
+          <input type="number" name="kit_default_qty" min="0" step="1" value="0">
+        </label>
+        <button class="btn" type="submit">Add Material</button>
+      </form>
+
+      <div class="section-title">Add a new solution</div>
+      <form class="card" id="new-solution-form">
+        <label>Solution Name<input type="text" name="name" required></label>
+        <label>Bottle Size (ml)<input type="number" name="bottle_size_ml" min="1" step="1" required></label>
+        <label>Reorder Level (L)<input type="number" name="reorder_level_l" min="0" step="0.5" value="1" required></label>
+        <label>Complete-Kit Qty (bottles) <span style="font-weight:400;color:#888">(0 if not part of the starter kit)</span>
+          <input type="number" name="kit_default_qty" min="0" step="1" value="0">
+        </label>
+        <button class="btn" type="submit">Add Solution</button>
+      </form>`;
+  }
+
+  content.innerHTML = html;
+
+  content.querySelectorAll('.subtabs button').forEach(btn => {
+    btn.addEventListener('click', () => { purchaseMode = btn.dataset.mode; renderPurchase(); });
+  });
+
+  const msgBox = document.getElementById('purchase-msg');
+
+  const mForm = document.getElementById('material-form');
+  if (mForm) mForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(mForm);
+    const btn = mForm.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('materials_purchases').insert({
+      material_id: fd.get('material_id'),
+      purchase_date: fd.get('purchase_date'),
+      quantity: Number(fd.get('quantity')),
+      supplier: fd.get('supplier') || null,
+      invoice_ref: fd.get('invoice_ref') || null,
+      unit_cost: fd.get('unit_cost') ? Number(fd.get('unit_cost')) : 0,
+      remarks: fd.get('remarks') || null,
+    });
+    if (error) { msgBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; btn.disabled = false; btn.textContent = 'Log Purchase'; return; }
+    msgBox.innerHTML = `<div class="msg success">Purchase logged.</div>`;
+    mForm.reset();
+    btn.disabled = false; btn.textContent = 'Log Purchase';
+  });
+
+  const sForm = document.getElementById('solution-form');
+  if (sForm) sForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(sForm);
+    const btn = sForm.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('solutions_log').insert({
+      solution_id: fd.get('solution_id'),
+      log_type: fd.get('log_type'),
+      log_date: fd.get('log_date'),
+      bottles: Number(fd.get('bottles')),
+      batch_ref: fd.get('batch_ref') || null,
+      cost_notes: fd.get('cost_notes') || null,
+      prepared_by: fd.get('prepared_by') || null,
+    });
+    if (error) { msgBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; btn.disabled = false; btn.textContent = 'Log Solution Entry'; return; }
+    msgBox.innerHTML = `<div class="msg success">Solution log entry added — litres auto-calculated.</div>`;
+    sForm.reset();
+    btn.disabled = false; btn.textContent = 'Log Solution Entry';
+  });
+
+  const nmForm = document.getElementById('new-material-form');
+  if (nmForm) nmForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(nmForm);
+    const btn = nmForm.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('materials').insert({
+      name: fd.get('name'),
+      unit: fd.get('unit'),
+      reorder_level: Number(fd.get('reorder_level')),
+      kit_default_qty: Number(fd.get('kit_default_qty') || 0),
+    });
+    btn.disabled = false; btn.textContent = 'Add Material';
+    if (error) { msgBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; return; }
+    msgBox.innerHTML = `<div class="msg success">Material added — it'll now show up everywhere.</div>`;
+    nmForm.reset();
+  });
+
+  const nsForm = document.getElementById('new-solution-form');
+  if (nsForm) nsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(nsForm);
+    const btn = nsForm.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('solutions').insert({
+      name: fd.get('name'),
+      bottle_size_ml: Number(fd.get('bottle_size_ml')),
+      reorder_level_l: Number(fd.get('reorder_level_l')),
+      kit_default_qty: Number(fd.get('kit_default_qty') || 0),
+    });
+    btn.disabled = false; btn.textContent = 'Add Solution';
+    if (error) { msgBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; return; }
+    msgBox.innerHTML = `<div class="msg success">Solution added — it'll now show up everywhere.</div>`;
+    nsForm.reset();
+  });
+}
+
+// ---------------- ISSUE KIT ----------------
+async function renderIssue() {
+  const [{ data: materials }, { data: solutions }, { data: attendants }] = await Promise.all([
+    db.from('materials').select('id,name,unit,kit_default_qty').order('name'),
+    db.from('solutions').select('id,name,bottle_size_ml,kit_default_qty').order('name'),
+    db.from('attendants').select('id,name,code').eq('active', true).order('name'),
+  ]);
+
+  let html = `<div id="issue-msg"></div>
+  <form class="card" id="issue-form" style="max-width:480px">
+    <label>Date of Issue<input type="date" name="issue_date" value="${todayStr()}" required></label>
+    <label>Employee
+      <select name="attendant_id" required>
+        <option value="">Select employee…</option>
+        ${attendants.map(a => `<option value="${a.id}">${escapeHtml(a.name)}${a.code ? ' (' + escapeHtml(a.code) + ')' : ''}</option>`).join('')}
+      </select>
+    </label>
+    <label>Issued By<input type="text" name="issued_by"></label>
+    <label>Remarks / Kit Type<input type="text" name="remarks" placeholder="e.g. New joiner starter kit"></label>
+  </form>
+
+  <div class="row-actions">
+    <button class="btn secondary" id="fill-kit-btn" type="button">Fill Complete Kit (new employee)</button>
+    <button class="btn secondary" id="clear-kit-btn" type="button">Clear all quantities</button>
+  </div>
+
+  <div class="section-title">Materials — enter qty to issue (leave blank to skip)</div>
+  <div class="qty-row header-row"><span>Item</span><span>Qty</span><span>Unit</span></div>
+  ${materials.map(m => `<div class="qty-row"><span>${escapeHtml(m.name)}</span><input type="number" min="0" step="1" data-type="material" data-id="${m.id}" data-kit="${m.kit_default_qty || 0}"><span>${escapeHtml(m.unit)}</span></div>`).join('')}
+
+  <div class="section-title">Solutions — enter bottles to issue</div>
+  <div class="qty-row header-row"><span>Solution</span><span>Bottles</span><span>Size</span></div>
+  ${solutions.map(s => `<div class="qty-row"><span>${escapeHtml(s.name)}</span><input type="number" min="0" step="1" data-type="solution" data-id="${s.id}" data-kit="${s.kit_default_qty || 0}"><span>${s.bottle_size_ml}ml</span></div>`).join('')}
+
+  <div style="margin-top:20px">
+    <button class="btn" id="issue-submit">Log This Issuance</button>
+  </div>`;
+
+  content.innerHTML = html;
+
+  const msgBox = document.getElementById('issue-msg');
+  const form = document.getElementById('issue-form');
+
+  if (materials.length === 0 && solutions.length === 0) {
+    msgBox.innerHTML = `<div class="msg error">No items set up yet. Add items under Log Purchase → Add New Item first.</div>`;
+  }
+  if (attendants.length === 0) {
+    msgBox.innerHTML += `<div class="msg error">No employees added yet. Add one under the Employees tab first.</div>`;
+  }
+
+  document.getElementById('fill-kit-btn').addEventListener('click', () => {
+    content.querySelectorAll('input[data-type]').forEach(inp => {
+      const kitQty = Number(inp.dataset.kit || 0);
+      inp.value = kitQty > 0 ? kitQty : '';
+    });
+  });
+  document.getElementById('clear-kit-btn').addEventListener('click', () => {
+    content.querySelectorAll('input[data-type]').forEach(inp => inp.value = '');
+  });
+
+  document.getElementById('issue-submit').addEventListener('click', async () => {
+    msgBox.innerHTML = '';
+    const fd = new FormData(form);
+    const issue_date = fd.get('issue_date');
+    const attendant_id = fd.get('attendant_id');
+    const issued_by = fd.get('issued_by') || null;
+    const remarks = fd.get('remarks') || null;
+
+    if (!form.reportValidity()) return;
+    if (!attendant_id) { msgBox.innerHTML = `<div class="msg error">Select an employee.</div>`; return; }
+
+    const rows = [];
+    content.querySelectorAll('input[data-type]').forEach(inp => {
+      const q = Number(inp.value);
+      if (q > 0) {
+        const type = inp.dataset.type;
+        rows.push({
+          issue_date, attendant_id, category: type === 'material' ? 'Material' : 'Solution',
+          material_id: type === 'material' ? inp.dataset.id : null,
+          solution_id: type === 'solution' ? inp.dataset.id : null,
+          qty_issued: q, issued_by, remarks,
+        });
+      }
+    });
+
+    if (rows.length === 0) { msgBox.innerHTML = `<div class="msg error">Enter a quantity for at least one item.</div>`; return; }
+
+    const btn = document.getElementById('issue-submit');
+    btn.disabled = true; btn.textContent = 'Logging…';
+    const { error } = await db.from('issuance_log').insert(rows);
+    btn.disabled = false; btn.textContent = 'Log This Issuance';
+
+    if (error) { msgBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; return; }
+    msgBox.innerHTML = `<div class="msg success">Logged ${rows.length} item${rows.length > 1 ? 's' : ''} to the issuance log.</div>`;
+    content.querySelectorAll('input[data-type]').forEach(inp => inp.value = '');
+  });
+}
+
+// ---------------- EMPLOYEES ----------------
+let employeeMode = 'list'; // list | add | history
+let historyEmployeeId = '';
+
+async function renderEmployees() {
+  let html = `<div class="subtabs">
+    <button data-mode="list" class="${employeeMode === 'list' ? 'active' : ''}">All Employees</button>
+    <button data-mode="add" class="${employeeMode === 'add' ? 'active' : ''}">+ Add Employee</button>
+    <button data-mode="history" class="${employeeMode === 'history' ? 'active' : ''}">Issuance History</button>
+  </div><div id="emp-msg"></div>`;
+
+  content.innerHTML = html;
+
+  content.querySelectorAll('.subtabs button').forEach(btn => {
+    btn.addEventListener('click', () => { employeeMode = btn.dataset.mode; renderEmployees(); });
+  });
+
+  if (employeeMode === 'list') return renderEmployeeList();
+  if (employeeMode === 'add') return renderEmployeeAdd();
+  if (employeeMode === 'history') return renderEmployeeHistory();
+}
+
+async function renderEmployeeList() {
+  const { data: attendants, error } = await db.from('attendants').select('*').order('name');
+  const msgBox = document.getElementById('emp-msg');
+  if (error) { msgBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; return; }
+
+  let html = `<table><thead><tr><th>Name</th><th>Code</th><th>Phone</th><th>Location</th><th>Joined</th><th>Active</th></tr></thead><tbody>`;
+  attendants.forEach(a => {
+    html += `<tr><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.code || '—')}</td><td>${escapeHtml(a.phone || '—')}</td><td>${escapeHtml(a.location || '—')}</td><td>${escapeHtml(a.joined_date || '—')}</td><td>${a.active ? '✔' : '—'}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  if (attendants.length === 0) html = `<p class="empty">No employees yet — add one.</p>`;
+  content.insertAdjacentHTML('beforeend', html);
+}
+
+async function renderEmployeeAdd() {
+  const html = `<form class="card" id="new-emp-form">
+    <label>Full Name<input type="text" name="name" required></label>
+    <label>Employee Code <span style="font-weight:400;color:#888">(any short ID you use, optional)</span><input type="text" name="code"></label>
+    <label>Phone Number<input type="text" name="phone"></label>
+    <label>Location<input type="text" name="location" placeholder="e.g. site / zone name"></label>
+    <label>Joined Date<input type="date" name="joined_date" value="${todayStr()}"></label>
+    <button class="btn" type="submit">Add Employee</button>
+  </form>`;
+  content.insertAdjacentHTML('beforeend', html);
+
+  const form = document.getElementById('new-emp-form');
+  const msgBox = document.getElementById('emp-msg');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const btn = form.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('attendants').insert({
+      name: fd.get('name'),
+      code: fd.get('code') || null,
+      phone: fd.get('phone') || null,
+      location: fd.get('location') || null,
+      joined_date: fd.get('joined_date') || todayStr(),
+    });
+    btn.disabled = false; btn.textContent = 'Add Employee';
+    if (error) { msgBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; return; }
+    msgBox.innerHTML = `<div class="msg success">Employee added. You can now issue a kit to them from Issue Kit.</div>`;
+    form.reset();
+  });
+}
+
+async function renderEmployeeHistory() {
+  const { data: attendants } = await db.from('attendants').select('id,name,code').order('name');
+
+  let html = `<label style="max-width:360px;display:block;margin-bottom:16px">Employee
+    <select id="history-emp-select">
+      <option value="">Select employee…</option>
+      ${attendants.map(a => `<option value="${a.id}" ${a.id === historyEmployeeId ? 'selected' : ''}>${escapeHtml(a.name)}${a.code ? ' (' + escapeHtml(a.code) + ')' : ''}</option>`).join('')}
+    </select>
+  </label><div id="history-results"></div>`;
+  content.insertAdjacentHTML('beforeend', html);
+
+  document.getElementById('history-emp-select').addEventListener('change', (e) => {
+    historyEmployeeId = e.target.value;
+    loadHistory();
+  });
+
+  if (historyEmployeeId) loadHistory();
+
+  async function loadHistory() {
+    const resultsBox = document.getElementById('history-results');
+    if (!historyEmployeeId) { resultsBox.innerHTML = ''; return; }
+    resultsBox.innerHTML = '<p class="empty">Loading…</p>';
+    const { data, error } = await db.from('employee_issuance_history').select('*').eq('attendant_id', historyEmployeeId);
+    if (error) { resultsBox.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; return; }
+    if (!data || data.length === 0) { resultsBox.innerHTML = `<p class="empty">No issuance history for this employee yet.</p>`; return; }
+
+    let html = `<table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Qty</th><th>Litres</th><th>Issued By</th><th>Remarks</th></tr></thead><tbody>`;
+    data.forEach(r => {
+      html += `<tr><td>${escapeHtml(r.issue_date)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.item_name)}</td><td>${r.qty_issued}</td><td>${r.litres_issued ? Number(r.litres_issued).toFixed(2) : '—'}</td><td>${escapeHtml(r.issued_by || '—')}</td><td>${escapeHtml(r.remarks || '—')}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    resultsBox.innerHTML = html;
+  }
+}
+
+render();
+</script>
+</body>
+</html>
