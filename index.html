@@ -12,8 +12,11 @@
 <body>
 <div class="wrap">
   <header>
-    <h1><a href="index.html">ECOVEX Inventory</a></h1>
-    <p>Live stock, purchases, kit issuance &amp; employee records</p>
+    <img src="assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
+    <div>
+      <h1><a href="index.html">ECOVEX Inventory</a></h1>
+      <p>Live stock, purchases, kit issuance &amp; employee records</p>
+    </div>
   </header>
   <nav id="nav"></nav>
   <div id="content"><p class="empty">Loading stock…</p></div>
@@ -53,9 +56,9 @@ async function loadStock() {
   html += `</tbody></table>`;
 
   html += `<div class="section-title">Solutions Stock (Litres)</div>
-  <table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
+  <table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Available (Bottles)</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
   solutions.forEach(s => {
-    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${s.reorder_level_l}</td>
+    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${Number(s.available_bottles).toFixed(1)}</td><td>${s.reorder_level_l}</td>
     <td><span class="badge ${s.status === 'OK' ? 'ok' : 'reorder'}">${s.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
   });
   html += `</tbody></table>`;

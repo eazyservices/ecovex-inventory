@@ -12,8 +12,11 @@
 <body>
 <div class="wrap">
   <header>
-    <h1><a href="../index.html">ECOVEX Inventory</a></h1>
-    <p>Manage Items</p>
+    <img src="../assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
+    <div>
+      <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+      <p>Manage Items</p>
+    </div>
   </header>
   <nav id="nav"></nav>
 
@@ -45,20 +48,106 @@
 <script>
 renderNav('items', 'pages');
 const msg = document.getElementById('msg');
+let editingMaterialId = null;
+let editingSolutionId = null;
 
 async function loadTables() {
   const { data: materials } = await db.from('materials').select('*').order('name');
   const { data: solutions } = await db.from('solutions').select('*').order('name');
+  renderMaterialsTable(materials || []);
+  renderSolutionsTable(solutions || []);
+}
 
-  document.getElementById('materials-table').innerHTML = materials.length ? `
-    <table><thead><tr><th>Name</th><th>Unit</th><th>Reorder Level</th></tr></thead><tbody>
-    ${materials.map(m => `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.reorder_level}</td></tr>`).join('')}
-    </tbody></table>` : `<p class="empty">No materials yet.</p>`;
+function renderMaterialsTable(materials) {
+  const box = document.getElementById('materials-table');
+  if (materials.length === 0) { box.innerHTML = '<p class="empty">No materials yet.</p>'; return; }
 
-  document.getElementById('solutions-table').innerHTML = solutions.length ? `
-    <table><thead><tr><th>Name</th><th>Bottle Size</th><th>Reorder Level (L)</th></tr></thead><tbody>
-    ${solutions.map(s => `<tr><td>${escapeHtml(s.name)}</td><td>${s.bottle_size_ml}ml</td><td>${s.reorder_level_l}</td></tr>`).join('')}
-    </tbody></table>` : `<p class="empty">No solutions yet.</p>`;
+  box.innerHTML = `<table><thead><tr><th>Name</th><th>Unit</th><th>Reorder Level</th><th></th></tr></thead><tbody>
+  ${materials.map(m => {
+    if (editingMaterialId === m.id) {
+      return `<tr data-id="${m.id}">
+        <td><input type="text" class="edit-name" value="${escapeHtml(m.name)}"></td>
+        <td><input type="text" class="edit-unit" value="${escapeHtml(m.unit)}" style="width:80px"></td>
+        <td><input type="number" class="edit-reorder" value="${m.reorder_level}" style="width:80px"></td>
+        <td>
+          <button class="btn secondary save-material" data-id="${m.id}" style="padding:4px 10px;font-size:12px">Save</button>
+          <button class="btn secondary cancel-material" style="padding:4px 10px;font-size:12px">Cancel</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
+      <td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.reorder_level}</td>
+      <td><button class="btn secondary edit-material" data-id="${m.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+
+  box.querySelectorAll('.edit-material').forEach(btn => {
+    btn.addEventListener('click', () => { editingMaterialId = btn.dataset.id; renderMaterialsTable(materials); });
+  });
+  box.querySelectorAll('.cancel-material').forEach(btn => {
+    btn.addEventListener('click', () => { editingMaterialId = null; renderMaterialsTable(materials); });
+  });
+  box.querySelectorAll('.save-material').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      const name = row.querySelector('.edit-name').value.trim();
+      const unit = row.querySelector('.edit-unit').value.trim();
+      const reorder_level = Number(row.querySelector('.edit-reorder').value);
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const { error } = await db.from('materials').update({ name, unit, reorder_level }).eq('id', btn.dataset.id);
+      if (error) { showMsg(msg, 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
+      showMsg(msg, 'success', 'Material updated.');
+      editingMaterialId = null;
+      loadTables();
+    });
+  });
+}
+
+function renderSolutionsTable(solutions) {
+  const box = document.getElementById('solutions-table');
+  if (solutions.length === 0) { box.innerHTML = '<p class="empty">No solutions yet.</p>'; return; }
+
+  box.innerHTML = `<table><thead><tr><th>Name</th><th>Bottle Size (ml)</th><th>Reorder Level (L)</th><th></th></tr></thead><tbody>
+  ${solutions.map(s => {
+    if (editingSolutionId === s.id) {
+      return `<tr data-id="${s.id}">
+        <td><input type="text" class="edit-name" value="${escapeHtml(s.name)}"></td>
+        <td><input type="number" class="edit-size" value="${s.bottle_size_ml}" style="width:90px"></td>
+        <td><input type="number" step="0.5" class="edit-reorder" value="${s.reorder_level_l}" style="width:90px"></td>
+        <td>
+          <button class="btn secondary save-solution" data-id="${s.id}" style="padding:4px 10px;font-size:12px">Save</button>
+          <button class="btn secondary cancel-solution" style="padding:4px 10px;font-size:12px">Cancel</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
+      <td>${escapeHtml(s.name)}</td><td>${s.bottle_size_ml}ml</td><td>${s.reorder_level_l}</td>
+      <td><button class="btn secondary edit-solution" data-id="${s.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+
+  box.querySelectorAll('.edit-solution').forEach(btn => {
+    btn.addEventListener('click', () => { editingSolutionId = btn.dataset.id; renderSolutionsTable(solutions); });
+  });
+  box.querySelectorAll('.cancel-solution').forEach(btn => {
+    btn.addEventListener('click', () => { editingSolutionId = null; renderSolutionsTable(solutions); });
+  });
+  box.querySelectorAll('.save-solution').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      const name = row.querySelector('.edit-name').value.trim();
+      const bottle_size_ml = Number(row.querySelector('.edit-size').value);
+      const reorder_level_l = Number(row.querySelector('.edit-reorder').value);
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const { error } = await db.from('solutions').update({ name, bottle_size_ml, reorder_level_l }).eq('id', btn.dataset.id);
+      if (error) { showMsg(msg, 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
+      showMsg(msg, 'success', 'Solution updated.');
+      editingSolutionId = null;
+      loadTables();
+    });
+  });
 }
 
 document.getElementById('new-material-form').addEventListener('submit', async (e) => {
