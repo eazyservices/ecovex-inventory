@@ -128,6 +128,7 @@ async function render() {
 
   } else {
     const { data: solutions } = await db.from('solutions').select('id,name,bottle_size_ml').order('name');
+    const { data: formulas } = await db.from('formulas').select('*').eq('is_active', true).order('name');
     content.innerHTML = `<form class="card" id="solution-form">
       <label>Solution Name
         <select name="solution_id" required>
@@ -142,11 +143,18 @@ async function render() {
           <option value="Opening Stock">Opening Stock (existing solution, not new)</option>
         </select>
       </label>
+      <label id="formula-field" style="display:none">Formula <span style="font-weight:400;color:#888">(auto-calculates ingredients used + batch cost)</span>
+        <select name="formula_id">
+          <option value="">No formula — enter cost manually</option>
+          ${(formulas || []).map(f => `<option value="${f.id}" data-solution="${f.solution_id}" data-base="${f.base_batch_litres}">${escapeHtml(f.name)} (base ${f.base_batch_litres}L)</option>`).join('')}
+        </select>
+      </label>
       <label>Date<input type="date" name="log_date" value="${todayStr()}" required></label>
       <label>Litres<input type="number" name="litres" min="0" step="0.01" required></label>
       <div id="bottle-hint" class="empty">Bottles: —</div>
-      <label>Unit Cost (₹ per litre, before GST)<input type="number" name="unit_cost" min="0" step="0.01" value="0"></label>
-      <label>GST % <input type="number" name="gst_percent" min="0" step="0.01" value="0" list="gst-slabs2">
+      <div id="ingredient-preview"></div>
+      <label id="cost-fields-material">Unit Cost (₹ per litre, before GST)<input type="number" name="unit_cost" min="0" step="0.01" value="0"></label>
+      <label id="gst-field">GST % <input type="number" name="gst_percent" min="0" step="0.01" value="0" list="gst-slabs2">
         <datalist id="gst-slabs2"><option value="0"><option value="5"><option value="12"><option value="18"><option value="28"></datalist>
       </label>
       <label>Transport / Delivery Cost (₹, flat)<input type="number" name="transport_cost" min="0" step="0.01" value="0"></label>
@@ -159,11 +167,66 @@ async function render() {
     if (solutions.length === 0) showMsg(msg, 'error', 'No solutions set up yet — add one under Manage Items first.');
 
     const form = document.getElementById('solution-form');
-    wireCostPreview(form);
-
+    const logTypeField = form.querySelector('[name="log_type"]');
+    const formulaField = document.getElementById('formula-field');
+    const formulaSelect = form.querySelector('[name="formula_id"]');
     const solutionSelect = form.querySelector('[name="solution_id"]');
     const litresField = form.querySelector('[name="litres"]');
     const bottleHint = document.getElementById('bottle-hint');
+    const ingredientPreview = document.getElementById('ingredient-preview');
+    const costFieldsMaterial = document.getElementById('cost-fields-material');
+    const gstField = document.getElementById('gst-field');
+    const costPreview = document.getElementById('cost-preview');
+
+    function toggleFormulaVisibility() {
+      const isPrepared = logTypeField.value === 'Prepared';
+      formulaField.style.display = isPrepared ? '' : 'none';
+      if (!isPrepared) { formulaSelect.value = ''; ingredientPreview.innerHTML = ''; }
+      updateFormulaOptionsForSolution();
+      updateCostFieldVisibility();
+    }
+
+    function updateFormulaOptionsForSolution() {
+      const selectedSolutionId = solutionSelect.value;
+      Array.from(formulaSelect.options).forEach(opt => {
+        if (!opt.value) return;
+        opt.hidden = selectedSolutionId && opt.dataset.solution !== selectedSolutionId;
+      });
+    }
+
+    function updateCostFieldVisibility() {
+      const usingFormula = logTypeField.value === 'Prepared' && formulaSelect.value;
+      costFieldsMaterial.style.display = usingFormula ? 'none' : '';
+      gstField.style.display = usingFormula ? 'none' : '';
+      costPreview.style.display = usingFormula ? 'none' : '';
+    }
+
+    async function updateIngredientPreview() {
+      updateCostFieldVisibility();
+      const formulaId = formulaSelect.value;
+      const litres = Number(litresField.value) || 0;
+      if (!formulaId || litres <= 0) { ingredientPreview.innerHTML = ''; return; }
+
+      const baseLitres = Number(formulaSelect.selectedOptions[0].dataset.base);
+      const { data: ingredients } = await db.from('formula_ingredients').select('qty_per_batch, chemicals(name, unit, id)').eq('formula_id', formulaId);
+      const { data: stock } = await db.from('chemical_stock').select('id, avg_unit_cost');
+      const costMap = {};
+      (stock || []).forEach(s => costMap[s.id] = Number(s.avg_unit_cost) || 0);
+
+      let totalCost = 0;
+      const rows = (ingredients || []).map(i => {
+        const scaled = i.qty_per_batch * (litres / baseLitres);
+        const unitCost = costMap[i.chemicals.id] || 0;
+        const cost = scaled * unitCost;
+        totalCost += cost;
+        return `<tr><td>${escapeHtml(i.chemicals.name)}</td><td>${scaled.toFixed(2)} ${escapeHtml(i.chemicals.unit)}</td><td>₹${cost.toFixed(2)}</td></tr>`;
+      });
+
+      ingredientPreview.innerHTML = `<div class="section-title" style="margin-top:12px">Ingredients this batch will consume</div>
+      <table><thead><tr><th>Chemical</th><th>Qty used</th><th>Cost</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+      <div class="msg success">Estimated batch cost: ₹${totalCost.toFixed(2)}</div>`;
+    }
+
     function updateBottleHint() {
       const opt = solutionSelect.selectedOptions[0];
       const size = opt ? Number(opt.dataset.size) : 0;
@@ -174,8 +237,12 @@ async function render() {
         bottleHint.textContent = 'Bottles: —';
       }
     }
-    solutionSelect.addEventListener('change', updateBottleHint);
-    litresField.addEventListener('input', updateBottleHint);
+
+    logTypeField.addEventListener('change', toggleFormulaVisibility);
+    solutionSelect.addEventListener('change', () => { updateBottleHint(); updateFormulaOptionsForSolution(); });
+    formulaSelect.addEventListener('change', updateIngredientPreview);
+    litresField.addEventListener('input', () => { updateBottleHint(); updateIngredientPreview(); });
+    toggleFormulaVisibility();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -185,6 +252,7 @@ async function render() {
       const { error } = await db.from('solutions_log').insert({
         solution_id: fd.get('solution_id'),
         log_type: fd.get('log_type'),
+        formula_id: fd.get('formula_id') || null,
         log_date: fd.get('log_date'),
         litres: Number(fd.get('litres')),
         unit_cost: Number(fd.get('unit_cost') || 0),
@@ -196,12 +264,15 @@ async function render() {
       });
       btn.disabled = false; btn.textContent = 'Log Solution Entry';
       if (error) return showMsg(msg, 'error', error.message);
-      showMsg(msg, 'success', 'Solution logged — bottles and landed cost calculated automatically.');
+      showMsg(msg, 'success', fd.get('formula_id') ? 'Batch logged — ingredients deducted from Chemicals stock automatically.' : 'Solution logged — bottles and landed cost calculated automatically.');
       form.reset();
       bottleHint.textContent = 'Bottles: —';
+      ingredientPreview.innerHTML = '';
+      toggleFormulaVisibility();
     });
   }
 }
+
 
 render();
 </script>

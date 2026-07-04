@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Formulas</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
+    <div>
+      <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+      <p>Formulas — the ingredient list &amp; quantities behind each solution you prepare in-house</p>
+    </div>
+  </header>
+  <nav id="nav"></nav>
+
+  <div id="msg"></div>
+
+  <div class="section-title">Add a new formula</div>
+  <p class="empty" style="margin-top:-6px;margin-bottom:12px">There's no file upload here — type the ingredient list in below, the same way you'd fill in Kit Templates. Once created, add its ingredients from the list below.</p>
+  <form class="card" id="new-formula-form">
+    <label>Solution
+      <select name="solution_id" id="new-formula-solution" required></select>
+    </label>
+    <label>Formula Name<input type="text" name="name" required placeholder="e.g. Tyre Polish — V5"></label>
+    <label>Base Batch Size (Litres) <span style="font-weight:400;color:#888">(the batch size these quantities are written for)</span>
+      <input type="number" name="base_batch_litres" min="0.01" step="0.01" required>
+    </label>
+    <label>Version<input type="text" name="version" placeholder="optional"></label>
+    <label>Notes<input type="text" name="notes" placeholder="optional"></label>
+    <button class="btn" type="submit">Create Formula</button>
+  </form>
+
+  <div class="section-title">Your Formulas</div>
+  <div id="formulas-list"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+renderNav('formulas', 'pages');
+const msg = document.getElementById('msg');
+let chemicals = [];
+
+async function init() {
+  const { data: solutions } = await db.from('solutions').select('id,name').order('name');
+  document.getElementById('new-formula-solution').innerHTML =
+    `<option value="">Select solution…</option>` + (solutions || []).map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  const { data: c } = await db.from('chemicals').select('id,name,unit').order('name');
+  chemicals = c || [];
+  loadFormulas();
+}
+
+document.getElementById('new-formula-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const btn = e.target.querySelector('button');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await db.from('formulas').insert({
+    solution_id: fd.get('solution_id'),
+    name: fd.get('name'),
+    base_batch_litres: Number(fd.get('base_batch_litres')),
+    version: fd.get('version') || null,
+    notes: fd.get('notes') || null,
+  });
+  btn.disabled = false; btn.textContent = 'Create Formula';
+  if (error) return showMsg(msg, 'error', error.message);
+  showMsg(msg, 'success', 'Formula created — add its ingredients below.');
+  e.target.reset();
+  loadFormulas();
+});
+
+async function loadFormulas() {
+  const listEl = document.getElementById('formulas-list');
+  const { data: formulas, error } = await db.from('formulas').select('*, solutions(name)').order('name');
+  if (error) { showMsg(listEl, 'error', error.message); return; }
+  if (!formulas || formulas.length === 0) { listEl.innerHTML = '<p class="empty">No formulas yet — create one above.</p>'; return; }
+
+  const { data: ingredients } = await db.from('formula_ingredients').select('*, chemicals(name, unit)');
+
+  listEl.innerHTML = formulas.map(f => {
+    const fIngredients = (ingredients || []).filter(i => i.formula_id === f.id);
+    const estCost = fIngredients.reduce((sum, i) => sum + 0, 0); // cost shown live is computed server-side at prep time; this list is just the recipe
+    return `
+    <div class="card-box" data-formula-id="${f.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>${escapeHtml(f.name)}</strong> — for <em>${escapeHtml(f.solutions?.name || 'unknown solution')}</em>
+          <div class="empty">Base batch: ${f.base_batch_litres}L ${f.version ? '· ' + escapeHtml(f.version) : ''} ${f.is_active ? '' : '· inactive'}</div>
+          ${f.notes ? `<div class="empty">${escapeHtml(f.notes)}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn secondary toggle-active" data-id="${f.id}" data-active="${f.is_active}" type="button">${f.is_active ? 'Mark Inactive' : 'Mark Active'}</button>
+          <button class="btn danger delete-formula" data-id="${f.id}" type="button">Delete</button>
+        </div>
+      </div>
+
+      ${fIngredients.length ? `
+      <table style="margin-top:10px"><thead><tr><th>Chemical</th><th>Qty per batch</th><th>Unit</th><th></th></tr></thead><tbody>
+        ${fIngredients.map(i => `<tr>
+          <td>${escapeHtml(i.chemicals?.name || 'unknown')}</td>
+          <td>${i.qty_per_batch}</td>
+          <td>${escapeHtml(i.chemicals?.unit || '')}</td>
+          <td><button class="btn secondary delete-ingredient" data-id="${i.id}" type="button" style="padding:4px 10px;font-size:12px">Remove</button></td>
+        </tr>`).join('')}
+      </tbody></table>` : `<p class="empty" style="margin-top:10px">No ingredients yet.</p>`}
+
+      <form class="inline-form add-ingredient-form" data-formula-id="${f.id}">
+        <label>Chemical
+          <select name="chemical_id" required>
+            <option value="">Select…</option>
+            ${chemicals.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.unit)})</option>`).join('')}
+          </select>
+        </label>
+        <label>Qty per batch
+          <input type="number" name="qty_per_batch" min="0.001" step="0.001" required style="width:100px">
+        </label>
+        <button class="btn secondary" type="submit">+ Add Ingredient</button>
+      </form>
+    </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.add-ingredient-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const { error } = await db.from('formula_ingredients').insert({
+        formula_id: form.dataset.formulaId,
+        chemical_id: fd.get('chemical_id'),
+        qty_per_batch: Number(fd.get('qty_per_batch')),
+      });
+      if (error) return showMsg(msg, 'error', error.message);
+      showMsg(msg, 'success', 'Ingredient added.');
+      loadFormulas();
+    });
+  });
+
+  listEl.querySelectorAll('.delete-ingredient').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const { error } = await db.from('formula_ingredients').delete().eq('id', btn.dataset.id);
+      if (error) return showMsg(msg, 'error', error.message);
+      loadFormulas();
+    });
+  });
+
+  listEl.querySelectorAll('.toggle-active').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const newActive = btn.dataset.active !== 'true';
+      const { error } = await db.from('formulas').update({ is_active: newActive }).eq('id', btn.dataset.id);
+      if (error) return showMsg(msg, 'error', error.message);
+      loadFormulas();
+    });
+  });
+
+  listEl.querySelectorAll('.delete-formula').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this formula and all its ingredients?')) return;
+      const { error } = await db.from('formulas').delete().eq('id', btn.dataset.id);
+      if (error) return showMsg(msg, 'error', error.message);
+      showMsg(msg, 'success', 'Formula deleted.');
+      loadFormulas();
+    });
+  });
+}
+
+init();
+</script>
+</body>
+</html>

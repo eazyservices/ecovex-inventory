@@ -27,9 +27,10 @@ renderNav('stock', 'root');
 
 async function loadStock() {
   const content = document.getElementById('content');
-  const [{ data: materials, error: e1 }, { data: solutions, error: e2 }] = await Promise.all([
+  const [{ data: materials, error: e1 }, { data: solutions, error: e2 }, { data: chemicals, error: e3 }] = await Promise.all([
     db.from('stock_materials').select('*').order('material_name'),
     db.from('stock_solutions').select('*').order('solution_name'),
+    db.from('chemical_stock').select('*'),
   ]);
 
   if (e1 || e2) {
@@ -37,7 +38,7 @@ async function loadStock() {
     return;
   }
 
-  const reorderCount = materials.filter(m => m.status === 'Reorder').length + solutions.filter(s => s.status === 'Reorder').length;
+  const reorderCount = materials.filter(m => m.status === 'Reorder').length + solutions.filter(s => s.status === 'Reorder').length + (chemicals || []).filter(c => c.status === 'Reorder').length;
 
   let html = '';
   if (reorderCount > 0) {
@@ -58,10 +59,22 @@ async function loadStock() {
   html += `<div class="section-title">Solutions Stock (Litres)</div>
   <table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Available (Bottles)</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
   solutions.forEach(s => {
-    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${Number(s.available_bottles).toFixed(1)}</td><td>${s.reorder_level_l}</td>
+    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${s.available_bottles != null ? Number(s.available_bottles).toFixed(1) : '—'}</td><td>${s.reorder_level_l}</td>
     <td><span class="badge ${s.status === 'OK' ? 'ok' : 'reorder'}">${s.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
   });
   html += `</tbody></table>`;
+
+  html += `<div class="section-title">Chemicals Stock (raw ingredients)</div>`;
+  if (!chemicals || chemicals.length === 0) {
+    html += `<p class="empty">No chemicals yet. Add some under <a href="pages/chemicals.html">Chemicals</a>.</p>`;
+  } else {
+    html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Available</th><th>Avg Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
+    chemicals.forEach(c => {
+      html += `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.unit)}</td><td>${Number(c.available_qty).toFixed(2)}</td><td>₹${Number(c.avg_unit_cost).toFixed(4)}</td><td>${c.reorder_level}</td>
+      <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
 
   content.innerHTML = html;
 }

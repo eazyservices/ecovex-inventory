@@ -20,6 +20,8 @@ const NAV_LINKS = [
   { key: 'stock', label: 'Stock', href: 'index.html' },
   { key: 'purchase', label: 'Log Purchase', href: 'pages/purchase.html' },
   { key: 'items', label: 'Manage Items', href: 'pages/items.html' },
+  { key: 'chemicals', label: 'Chemicals', href: 'pages/chemicals.html' },
+  { key: 'formulas', label: 'Formulas', href: 'pages/formulas.html' },
   { key: 'issue', label: 'Issue Kit', href: 'pages/issue.html' },
   { key: 'templates', label: 'Kit Templates', href: 'pages/templates.html' },
   { key: 'employees', label: 'Employees', href: 'pages/employees.html' },

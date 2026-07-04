@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Chemicals</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
+    <div>
+      <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+      <p>Chemicals — raw ingredients used to prepare your own solutions (kept separate from Materials/Solutions)</p>
+    </div>
+  </header>
+  <nav id="nav"></nav>
+
+  <div class="subtabs" id="subtabs">
+    <button data-mode="stock" class="active">Stock</button>
+    <button data-mode="purchase">Log Purchase / Opening Stock</button>
+    <button data-mode="manage">Manage Chemicals</button>
+  </div>
+  <div id="msg"></div>
+  <div id="content"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+renderNav('chemicals', 'pages');
+let mode = 'stock';
+let editingId = null;
+
+document.querySelectorAll('#subtabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#subtabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    render();
+  });
+});
+
+async function render() {
+  document.getElementById('msg').innerHTML = '';
+  if (mode === 'stock') return renderStock();
+  if (mode === 'purchase') return renderPurchase();
+  if (mode === 'manage') return renderManage();
+}
+
+async function renderStock() {
+  const content = document.getElementById('content');
+  const { data, error } = await db.from('chemical_stock').select('*');
+  if (error) { showMsg(content, 'error', error.message); return; }
+  if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No chemicals yet.</p>'; return; }
+
+  const reorderCount = data.filter(c => c.status === 'Reorder').length;
+  let html = reorderCount > 0 ? `<div class="msg error">⚠ ${reorderCount} chemical${reorderCount > 1 ? 's' : ''} at or below reorder level</div>` : '';
+
+  html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Purchased</th><th>Used</th><th>Available</th><th>Avg Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
+  ${data.map(c => `<tr>
+    <td>${escapeHtml(c.name)}${c.alt_name ? `<div class="empty">${escapeHtml(c.alt_name)}</div>` : ''}</td>
+    <td>${escapeHtml(c.unit)}</td>
+    <td>${Number(c.total_purchased).toFixed(2)}</td>
+    <td>${Number(c.total_used).toFixed(2)}</td>
+    <td>${Number(c.available_qty).toFixed(2)}</td>
+    <td>₹${Number(c.avg_unit_cost).toFixed(4)}</td>
+    <td>${c.reorder_level}</td>
+    <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td>
+  </tr>`).join('')}
+  </tbody></table>`;
+  content.innerHTML = html;
+}
+
+async function renderPurchase() {
+  const content = document.getElementById('content');
+  const msg = document.getElementById('msg');
+  const { data: chemicals } = await db.from('chemicals').select('id,name,unit').order('name');
+
+  content.innerHTML = `<form class="card" id="chem-purchase-form">
+    <label>Chemical
+      <select name="chemical_id" required>
+        <option value="">Select chemical…</option>
+        ${(chemicals || []).map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.unit)})</option>`).join('')}
+      </select>
+    </label>
+    <label>Date<input type="date" name="purchase_date" value="${todayStr()}" required></label>
+    <label>Entry Type
+      <select name="entry_type">
+        <option value="Purchase">Purchase</option>
+        <option value="Opening Stock">Opening Stock (existing chemical, not a new purchase)</option>
+      </select>
+    </label>
+    <label>Quantity<input type="number" name="quantity" min="0" step="0.01" required></label>
+    <label>Unit Cost (₹ per g/ml, before GST) <span style="font-weight:400;color:#888">(leave 0 if unknown)</span><input type="number" name="unit_cost" min="0" step="0.0001" value="0"></label>
+    <label>GST % <input type="number" name="gst_percent" min="0" step="0.01" value="0" list="gst-slabs">
+      <datalist id="gst-slabs"><option value="0"><option value="5"><option value="12"><option value="18"><option value="28"></datalist>
+    </label>
+    <label>Transport / Delivery Cost (₹, flat)<input type="number" name="transport_cost" min="0" step="0.01" value="0"></label>
+    <div id="cost-preview" class="empty">Landed cost: —</div>
+    <label>Supplier / Source<input type="text" name="supplier"></label>
+    <label>Invoice / Ref No.<input type="text" name="invoice_ref"></label>
+    <label>Remarks<textarea name="remarks" rows="2"></textarea></label>
+    <button class="btn" type="submit">Log Entry</button>
+  </form>`;
+
+  if (!chemicals || chemicals.length === 0) showMsg(msg, 'error', 'No chemicals set up yet — add one under Manage Chemicals first.');
+
+  const form = document.getElementById('chem-purchase-form');
+  const qtyField = form.querySelector('[name="quantity"]');
+  const costField = form.querySelector('[name="unit_cost"]');
+  const gstField = form.querySelector('[name="gst_percent"]');
+  const transportField = form.querySelector('[name="transport_cost"]');
+  const preview = document.getElementById('cost-preview');
+  function updatePreview() {
+    const qty = Number(qtyField.value) || 0;
+    const unitCost = Number(costField.value) || 0;
+    const gst = Number(gstField.value) || 0;
+    const transport = Number(transportField.value) || 0;
+    const base = qty * unitCost;
+    const gstAmt = Math.round(base * gst / 100 * 100) / 100;
+    preview.textContent = `Landed cost: ₹${base.toFixed(2)} + GST ₹${gstAmt.toFixed(2)} + transport ₹${transport.toFixed(2)} = ₹${(base + gstAmt + transport).toFixed(2)}`;
+  }
+  [qtyField, costField, gstField, transportField].forEach(f => f.addEventListener('input', updatePreview));
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const btn = form.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('chemical_purchases').insert({
+      chemical_id: fd.get('chemical_id'),
+      purchase_date: fd.get('purchase_date'),
+      entry_type: fd.get('entry_type'),
+      quantity: Number(fd.get('quantity')),
+      unit_cost: Number(fd.get('unit_cost') || 0),
+      gst_percent: Number(fd.get('gst_percent') || 0),
+      transport_cost: Number(fd.get('transport_cost') || 0),
+      supplier: fd.get('supplier') || null,
+      invoice_ref: fd.get('invoice_ref') || null,
+      remarks: fd.get('remarks') || null,
+    });
+    btn.disabled = false; btn.textContent = 'Log Entry';
+    if (error) return showMsg(msg, 'error', error.message);
+    showMsg(msg, 'success', 'Logged — chemical stock and average cost updated.');
+    form.reset();
+  });
+}
+
+async function renderManage() {
+  const content = document.getElementById('content');
+  const msg = document.getElementById('msg');
+  const { data: chemicals } = await db.from('chemicals').select('*').order('name');
+
+  let html = `<table><thead><tr><th>Name</th><th>Alt Name</th><th>Unit</th><th>Reorder Level</th><th></th></tr></thead><tbody>`;
+  (chemicals || []).forEach(c => {
+    if (editingId === c.id) {
+      html += `<tr data-id="${c.id}">
+        <td><input type="text" class="edit-name" value="${escapeHtml(c.name)}"></td>
+        <td><input type="text" class="edit-alt" value="${escapeHtml(c.alt_name || '')}"></td>
+        <td><input type="text" class="edit-unit" value="${escapeHtml(c.unit)}" style="width:60px"></td>
+        <td><input type="number" step="0.01" class="edit-reorder" value="${c.reorder_level}" style="width:90px"></td>
+        <td>
+          <button class="btn secondary save-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Save</button>
+          <button class="btn secondary cancel-chem" style="padding:4px 10px;font-size:12px">Cancel</button>
+        </td>
+      </tr>`;
+    } else {
+      html += `<tr>
+        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>${c.reorder_level}</td>
+        <td><button class="btn secondary edit-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
+      </tr>`;
+    }
+  });
+  html += `</tbody></table>`;
+
+  html += `<div class="section-title">Add a new chemical</div>
+  <form class="card" id="new-chem-form">
+    <label>Name<input type="text" name="name" required></label>
+    <label>Alt / Common Name<input type="text" name="alt_name"></label>
+    <label>Unit<select name="unit"><option value="g">g</option><option value="ml">ml</option></select></label>
+    <label>Reorder Level<input type="number" name="reorder_level" min="0" step="0.01" value="0" required></label>
+    <button class="btn" type="submit">Add Chemical</button>
+  </form>`;
+
+  content.innerHTML = html;
+
+  content.querySelectorAll('.edit-chem').forEach(btn => btn.addEventListener('click', () => { editingId = btn.dataset.id; renderManage(); }));
+  content.querySelectorAll('.cancel-chem').forEach(btn => btn.addEventListener('click', () => { editingId = null; renderManage(); }));
+  content.querySelectorAll('.save-chem').forEach(btn => btn.addEventListener('click', async () => {
+    const row = btn.closest('tr');
+    const name = row.querySelector('.edit-name').value.trim();
+    const alt_name = row.querySelector('.edit-alt').value.trim() || null;
+    const unit = row.querySelector('.edit-unit').value.trim();
+    const reorder_level = Number(row.querySelector('.edit-reorder').value);
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('chemicals').update({ name, alt_name, unit, reorder_level }).eq('id', btn.dataset.id);
+    if (error) { showMsg(msg, 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
+    showMsg(msg, 'success', 'Chemical updated.');
+    editingId = null;
+    renderManage();
+  }));
+
+  document.getElementById('new-chem-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const btn = e.target.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('chemicals').insert({
+      name: fd.get('name'),
+      alt_name: fd.get('alt_name') || null,
+      unit: fd.get('unit'),
+      reorder_level: Number(fd.get('reorder_level')),
+    });
+    btn.disabled = false; btn.textContent = 'Add Chemical';
+    if (error) return showMsg(msg, 'error', error.message);
+    showMsg(msg, 'success', 'Chemical added.');
+    e.target.reset();
+    renderManage();
+  });
+}
+
+render();
+</script>
+</body>
+</html>
