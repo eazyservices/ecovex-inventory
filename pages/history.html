@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — History</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+    <p>Procurement &amp; preparation history — what was bought or made, when, and why</p>
+  </header>
+  <nav id="nav"></nav>
+
+  <div class="subtabs" id="subtabs">
+    <button data-mode="materials" class="active">Materials Purchases</button>
+    <button data-mode="solutions">Solutions Log</button>
+  </div>
+  <div id="msg"></div>
+  <div id="content"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+renderNav('history', 'pages');
+let mode = 'materials';
+
+document.querySelectorAll('#subtabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#subtabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    render();
+  });
+});
+
+async function render() {
+  const content = document.getElementById('content');
+  const msg = document.getElementById('msg');
+  content.innerHTML = '<p class="empty">Loading…</p>';
+  msg.innerHTML = '';
+
+  if (mode === 'materials') {
+    const { data, error } = await db.from('materials_purchase_history').select('*');
+    if (error) { showMsg(content, 'error', error.message); return; }
+    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No purchases logged yet.</p>'; return; }
+
+    const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
+    content.innerHTML = `<div class="empty" style="margin-bottom:10px">${data.length} purchase entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
+    <table><thead><tr>
+      <th>Date</th><th>Item</th><th>Qty</th><th>Unit Cost</th><th>GST %</th><th>Transport</th><th>Landed Cost</th><th>Supplier</th><th>Invoice</th><th>Remarks</th>
+    </tr></thead><tbody>
+    ${data.map(r => `<tr>
+      <td>${escapeHtml(r.purchase_date)}</td>
+      <td>${escapeHtml(r.material_name)}</td>
+      <td>${r.quantity} ${escapeHtml(r.unit)}</td>
+      <td>₹${Number(r.unit_cost).toFixed(2)}</td>
+      <td>${r.gst_percent}%</td>
+      <td>₹${Number(r.transport_cost).toFixed(2)}</td>
+      <td><strong>₹${Number(r.total_landed_cost).toFixed(2)}</strong></td>
+      <td>${escapeHtml(r.supplier || '—')}</td>
+      <td>${escapeHtml(r.invoice_ref || '—')}</td>
+      <td>${escapeHtml(r.remarks || '—')}</td>
+    </tr>`).join('')}
+    </tbody></table>`;
+
+  } else {
+    const { data, error } = await db.from('solutions_log_history').select('*');
+    if (error) { showMsg(content, 'error', error.message); return; }
+    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No solution entries logged yet.</p>'; return; }
+
+    const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
+    content.innerHTML = `<div class="empty" style="margin-bottom:10px">${data.length} entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
+    <table><thead><tr>
+      <th>Date</th><th>Solution</th><th>Type</th><th>Litres</th><th>Bottles</th><th>Unit Cost/L</th><th>GST %</th><th>Transport</th><th>Landed Cost</th><th>Batch</th><th>By</th><th>Notes</th>
+    </tr></thead><tbody>
+    ${data.map(r => `<tr>
+      <td>${escapeHtml(r.log_date)}</td>
+      <td>${escapeHtml(r.solution_name)}</td>
+      <td>${escapeHtml(r.log_type)}</td>
+      <td>${Number(r.litres).toFixed(2)}</td>
+      <td>${Number(r.bottles).toFixed(2)}</td>
+      <td>₹${Number(r.unit_cost).toFixed(2)}</td>
+      <td>${r.gst_percent}%</td>
+      <td>₹${Number(r.transport_cost).toFixed(2)}</td>
+      <td><strong>₹${Number(r.total_landed_cost).toFixed(2)}</strong></td>
+      <td>${escapeHtml(r.batch_ref || '—')}</td>
+      <td>${escapeHtml(r.prepared_by || '—')}</td>
+      <td>${escapeHtml(r.cost_notes || '—')}</td>
+    </tr>`).join('')}
+    </tbody></table>`;
+  }
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Kit Templates</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+    <p>Kit Templates — build reusable item lists like "New Employee Kit" or "Monthly Refill"</p>
+  </header>
+  <nav id="nav"></nav>
+
+  <div id="msg"></div>
+
+  <div class="section-title">Create a new template</div>
+  <form class="card" id="new-template-form">
+    <label>Template Name<input type="text" name="name" required placeholder="e.g. New Employee Kit"></label>
+    <label>Description<input type="text" name="description" placeholder="optional"></label>
+    <button class="btn" type="submit">Create Template</button>
+  </form>
+
+  <div class="section-title">Your Templates</div>
+  <div id="templates-list"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+renderNav('templates', 'pages');
+const msg = document.getElementById('msg');
+let materials = [], solutions = [];
+
+document.getElementById('new-template-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const btn = e.target.querySelector('button');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await db.from('kit_templates').insert({
+    name: fd.get('name'),
+    description: fd.get('description') || null,
+  });
+  btn.disabled = false; btn.textContent = 'Create Template';
+  if (error) return showMsg(msg, 'error', error.message);
+  showMsg(msg, 'success', 'Template created — add items to it below.');
+  e.target.reset();
+  loadTemplates();
+});
+
+async function loadTemplates() {
+  const listEl = document.getElementById('templates-list');
+  const [{ data: templates, error }, { data: m }, { data: s }, { data: items }] = await Promise.all([
+    db.from('kit_templates').select('*').order('name'),
+    db.from('materials').select('id,name').order('name'),
+    db.from('solutions').select('id,name').order('name'),
+    db.from('kit_template_items_detail').select('*'),
+  ]);
+  materials = m || [];
+  solutions = s || [];
+
+  if (error) { showMsg(listEl, 'error', error.message); return; }
+  if (!templates || templates.length === 0) { listEl.innerHTML = `<p class="empty">No templates yet — create one above.</p>`; return; }
+
+  listEl.innerHTML = templates.map(t => {
+    const tItems = (items || []).filter(i => i.template_id === t.id);
+    return `
+    <div class="card-box" data-template-id="${t.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>${escapeHtml(t.name)}</strong>
+          ${t.description ? `<div class="empty">${escapeHtml(t.description)}</div>` : ''}
+        </div>
+        <button class="btn danger delete-template" data-id="${t.id}" type="button">Delete Template</button>
+      </div>
+
+      ${tItems.length ? `
+      <table style="margin-top:10px"><thead><tr><th>Category</th><th>Item</th><th>Qty</th><th></th></tr></thead><tbody>
+        ${tItems.map(i => `<tr>
+          <td>${escapeHtml(i.category)}</td>
+          <td>${escapeHtml(i.item_name)}</td>
+          <td>${i.qty}</td>
+          <td><button class="btn secondary delete-item" data-id="${i.id}" type="button" style="padding:4px 10px;font-size:12px">Remove</button></td>
+        </tr>`).join('')}
+      </tbody></table>` : `<p class="empty" style="margin-top:10px">No items in this template yet.</p>`}
+
+      <form class="inline-form add-item-form" data-template-id="${t.id}">
+        <label>Category
+          <select name="category" class="item-category">
+            <option value="Material">Material</option>
+            <option value="Solution">Solution</option>
+          </select>
+        </label>
+        <label>Item
+          <select name="item_id" class="item-select">
+            ${materials.map(mm => `<option value="${mm.id}">${escapeHtml(mm.name)}</option>`).join('')}
+          </select>
+        </label>
+        <label>Qty
+          <input type="number" name="qty" min="1" step="1" value="1" required style="width:80px">
+        </label>
+        <button class="btn secondary" type="submit">+ Add Item</button>
+      </form>
+    </div>`;
+  }).join('');
+
+  // wire category toggle -> repopulate item select
+  listEl.querySelectorAll('.item-category').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const itemSelect = sel.closest('form').querySelector('.item-select');
+      const list = sel.value === 'Material' ? materials : solutions;
+      itemSelect.innerHTML = list.map(x => `<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
+    });
+  });
+
+  // add item to template
+  listEl.querySelectorAll('.add-item-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const category = fd.get('category');
+      const itemId = fd.get('item_id');
+      const qty = Number(fd.get('qty'));
+      const templateId = form.dataset.templateId;
+      if (!itemId) return;
+
+      const { error } = await db.from('kit_template_items').insert({
+        template_id: templateId,
+        category,
+        material_id: category === 'Material' ? itemId : null,
+        solution_id: category === 'Solution' ? itemId : null,
+        qty,
+      });
+      if (error) return showMsg(msg, 'error', error.message);
+      showMsg(msg, 'success', 'Item added to template.');
+      loadTemplates();
+    });
+  });
+
+  // remove item from template
+  listEl.querySelectorAll('.delete-item').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const { error } = await db.from('kit_template_items').delete().eq('id', btn.dataset.id);
+      if (error) return showMsg(msg, 'error', error.message);
+      loadTemplates();
+    });
+  });
+
+  // delete whole template
+  listEl.querySelectorAll('.delete-template').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this template and all its items?')) return;
+      const { error } = await db.from('kit_templates').delete().eq('id', btn.dataset.id);
+      if (error) return showMsg(msg, 'error', error.message);
+      showMsg(msg, 'success', 'Template deleted.');
+      loadTemplates();
+    });
+  });
+}
+
+loadTemplates();
+</script>
+</body>
+</html>

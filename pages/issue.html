@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Issue Kit</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+    <p>Issue Kit</p>
+  </header>
+  <nav id="nav"></nav>
+
+  <div id="msg"></div>
+  <div id="content"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+renderNav('issue', 'pages');
+let templateItemsByTemplate = {};
+
+async function init() {
+  const content = document.getElementById('content');
+  const msg = document.getElementById('msg');
+
+  const [{ data: materials }, { data: solutions }, { data: attendants }, { data: templates }, { data: templateItems }] = await Promise.all([
+    db.from('materials').select('id,name,unit').order('name'),
+    db.from('solutions').select('id,name,bottle_size_ml').order('name'),
+    db.from('attendants').select('id,name,code').eq('active', true).order('name'),
+    db.from('kit_templates').select('*').order('name'),
+    db.from('kit_template_items_detail').select('*'),
+  ]);
+
+  (templateItems || []).forEach(i => {
+    if (!templateItemsByTemplate[i.template_id]) templateItemsByTemplate[i.template_id] = [];
+    templateItemsByTemplate[i.template_id].push(i);
+  });
+
+  content.innerHTML = `
+  <form class="card" id="issue-form" style="max-width:480px">
+    <label>Date of Issue<input type="date" name="issue_date" value="${todayStr()}" required></label>
+    <label>Employee
+      <select name="attendant_id" required>
+        <option value="">Select employee…</option>
+        ${(attendants || []).map(a => `<option value="${a.id}">${escapeHtml(a.name)}${a.code ? ' (' + escapeHtml(a.code) + ')' : ''}</option>`).join('')}
+      </select>
+    </label>
+    <label>Issued By<input type="text" name="issued_by"></label>
+    <label>Remarks<input type="text" name="remarks" placeholder="e.g. New joiner starter kit"></label>
+  </form>
+
+  <div class="row-actions">
+    <label style="max-width:280px">Apply Template
+      <select id="template-select">
+        <option value="">— choose a template to auto-fill —</option>
+        ${(templates || []).map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+    </label>
+    <button class="btn secondary" id="clear-btn" type="button">Clear all quantities</button>
+    <a class="btn secondary" href="templates.html" style="text-decoration:none;display:inline-block">Manage Templates</a>
+  </div>
+
+  <div class="section-title">Materials — enter qty to issue (leave blank to skip)</div>
+  <div class="qty-row header-row"><span>Item</span><span>Qty</span><span>Unit</span></div>
+  ${(materials || []).map(m => `<div class="qty-row"><span>${escapeHtml(m.name)}</span><input type="number" min="0" step="1" data-type="material" data-id="${m.id}"><span>${escapeHtml(m.unit)}</span></div>`).join('')}
+
+  <div class="section-title">Solutions — enter bottles to issue</div>
+  <div class="qty-row header-row"><span>Solution</span><span>Bottles</span><span>Size</span></div>
+  ${(solutions || []).map(s => `<div class="qty-row"><span>${escapeHtml(s.name)}</span><input type="number" min="0" step="1" data-type="solution" data-id="${s.id}"><span>${s.bottle_size_ml}ml</span></div>`).join('')}
+
+  <div style="margin-top:20px">
+    <button class="btn" id="issue-submit">Log This Issuance</button>
+  </div>`;
+
+  if ((materials || []).length === 0 && (solutions || []).length === 0) {
+    showMsg(msg, 'error', 'No items set up yet. Add items under Manage Items first.');
+  } else if ((attendants || []).length === 0) {
+    showMsg(msg, 'error', 'No employees added yet. Add one under Employees first.');
+  }
+
+  document.getElementById('template-select').addEventListener('change', (e) => {
+    const tItems = templateItemsByTemplate[e.target.value] || [];
+    // clear first
+    content.querySelectorAll('input[data-type]').forEach(inp => inp.value = '');
+    tItems.forEach(ti => {
+      const type = ti.category === 'Material' ? 'material' : 'solution';
+      const id = ti.category === 'Material' ? ti.material_id : ti.solution_id;
+      const inp = content.querySelector(`input[data-type="${type}"][data-id="${id}"]`);
+      if (inp) inp.value = ti.qty;
+    });
+  });
+
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    content.querySelectorAll('input[data-type]').forEach(inp => inp.value = '');
+  });
+
+  document.getElementById('issue-submit').addEventListener('click', async () => {
+    msg.innerHTML = '';
+    const form = document.getElementById('issue-form');
+    const fd = new FormData(form);
+    const issue_date = fd.get('issue_date');
+    const attendant_id = fd.get('attendant_id');
+    const issued_by = fd.get('issued_by') || null;
+    const remarks = fd.get('remarks') || null;
+
+    if (!form.reportValidity()) return;
+    if (!attendant_id) return showMsg(msg, 'error', 'Select an employee.');
+
+    const rows = [];
+    content.querySelectorAll('input[data-type]').forEach(inp => {
+      const q = Number(inp.value);
+      if (q > 0) {
+        const type = inp.dataset.type;
+        rows.push({
+          issue_date, attendant_id, category: type === 'material' ? 'Material' : 'Solution',
+          material_id: type === 'material' ? inp.dataset.id : null,
+          solution_id: type === 'solution' ? inp.dataset.id : null,
+          qty_issued: q, issued_by, remarks,
+        });
+      }
+    });
+
+    if (rows.length === 0) return showMsg(msg, 'error', 'Enter a quantity for at least one item.');
+
+    const btn = document.getElementById('issue-submit');
+    btn.disabled = true; btn.textContent = 'Logging…';
+    const { error } = await db.from('issuance_log').insert(rows);
+    btn.disabled = false; btn.textContent = 'Log This Issuance';
+
+    if (error) return showMsg(msg, 'error', error.message);
+    showMsg(msg, 'success', `Logged ${rows.length} item${rows.length > 1 ? 's' : ''} to the issuance log.`);
+    content.querySelectorAll('input[data-type]').forEach(inp => inp.value = '');
+  });
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Employees</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+    <p>Employees</p>
+  </header>
+  <nav id="nav"></nav>
+
+  <div class="subtabs" id="subtabs">
+    <button data-mode="list" class="active">All Employees</button>
+    <button data-mode="add">+ Add Employee</button>
+    <button data-mode="history">Issuance History</button>
+  </div>
+  <div id="msg"></div>
+  <div id="content"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+renderNav('employees', 'pages');
+let mode = 'list';
+let historyEmployeeId = '';
+
+document.querySelectorAll('#subtabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#subtabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    render();
+  });
+});
+
+async function render() {
+  const msg = document.getElementById('msg');
+  msg.innerHTML = '';
+  if (mode === 'list') return renderList();
+  if (mode === 'add') return renderAdd();
+  if (mode === 'history') return renderHistory();
+}
+
+async function renderList() {
+  const content = document.getElementById('content');
+  const { data, error } = await db.from('attendants').select('*').order('name');
+  if (error) { showMsg(content, 'error', error.message); return; }
+  if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No employees yet — add one.</p>'; return; }
+
+  content.innerHTML = `<table><thead><tr><th>Name</th><th>Code</th><th>Phone</th><th>Location</th><th>Joined</th><th>Active</th></tr></thead><tbody>
+  ${data.map(a => `<tr><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.code || '—')}</td><td>${escapeHtml(a.phone || '—')}</td><td>${escapeHtml(a.location || '—')}</td><td>${escapeHtml(a.joined_date || '—')}</td><td>${a.active ? '✔' : '—'}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+async function renderAdd() {
+  const content = document.getElementById('content');
+  content.innerHTML = `<form class="card" id="new-emp-form">
+    <label>Full Name<input type="text" name="name" required></label>
+    <label>Employee Code <span style="font-weight:400;color:#888">(optional)</span><input type="text" name="code"></label>
+    <label>Phone Number<input type="text" name="phone"></label>
+    <label>Location<input type="text" name="location" placeholder="e.g. site / zone name"></label>
+    <label>Joined Date<input type="date" name="joined_date" value="${todayStr()}"></label>
+    <button class="btn" type="submit">Add Employee</button>
+  </form>`;
+
+  const form = document.getElementById('new-emp-form');
+  const msg = document.getElementById('msg');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const btn = form.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('attendants').insert({
+      name: fd.get('name'),
+      code: fd.get('code') || null,
+      phone: fd.get('phone') || null,
+      location: fd.get('location') || null,
+      joined_date: fd.get('joined_date') || todayStr(),
+    });
+    btn.disabled = false; btn.textContent = 'Add Employee';
+    if (error) return showMsg(msg, 'error', error.message);
+    showMsg(msg, 'success', 'Employee added. You can now issue a kit to them from Issue Kit.');
+    form.reset();
+  });
+}
+
+async function renderHistory() {
+  const content = document.getElementById('content');
+  const { data: attendants } = await db.from('attendants').select('id,name,code').order('name');
+
+  content.innerHTML = `<label style="max-width:360px;display:block;margin-bottom:16px">Employee
+    <select id="history-emp-select">
+      <option value="">Select employee…</option>
+      ${(attendants || []).map(a => `<option value="${a.id}" ${a.id === historyEmployeeId ? 'selected' : ''}>${escapeHtml(a.name)}${a.code ? ' (' + escapeHtml(a.code) + ')' : ''}</option>`).join('')}
+    </select>
+  </label><div id="history-results"></div>`;
+
+  document.getElementById('history-emp-select').addEventListener('change', (e) => {
+    historyEmployeeId = e.target.value;
+    loadHistory();
+  });
+
+  if (historyEmployeeId) loadHistory();
+
+  async function loadHistory() {
+    const resultsBox = document.getElementById('history-results');
+    if (!historyEmployeeId) { resultsBox.innerHTML = ''; return; }
+    resultsBox.innerHTML = '<p class="empty">Loading…</p>';
+    const { data, error } = await db.from('employee_issuance_history').select('*').eq('attendant_id', historyEmployeeId);
+    if (error) { showMsg(resultsBox, 'error', error.message); return; }
+    if (!data || data.length === 0) { resultsBox.innerHTML = '<p class="empty">No issuance history for this employee yet.</p>'; return; }
+
+    resultsBox.innerHTML = `<table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Qty</th><th>Litres</th><th>Issued By</th><th>Remarks</th></tr></thead><tbody>
+    ${data.map(r => `<tr><td>${escapeHtml(r.issue_date)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.item_name)}</td><td>${r.qty_issued}</td><td>${r.litres_issued ? Number(r.litres_issued).toFixed(2) : '—'}</td><td>${escapeHtml(r.issued_by || '—')}</td><td>${escapeHtml(r.remarks || '—')}</td></tr>`).join('')}
+    </tbody></table>`;
+  }
+}
+
+render();
+</script>
+</body>
+</html>
