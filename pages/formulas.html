@@ -45,6 +45,7 @@
 renderNav('formulas', 'pages');
 const msg = document.getElementById('msg');
 let chemicals = [];
+let expandedFormulaIds = new Set();
 
 async function init() {
   const { data: solutions } = await db.from('solutions').select('id,name').order('name');
@@ -84,7 +85,7 @@ async function loadFormulas() {
 
   listEl.innerHTML = formulas.map(f => {
     const fIngredients = (ingredients || []).filter(i => i.formula_id === f.id);
-    const estCost = fIngredients.reduce((sum, i) => sum + 0, 0); // cost shown live is computed server-side at prep time; this list is just the recipe
+    const isExpanded = expandedFormulaIds.has(f.id);
     return `
     <div class="card-box" data-formula-id="${f.id}">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -94,11 +95,13 @@ async function loadFormulas() {
           ${f.notes ? `<div class="empty">${escapeHtml(f.notes)}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px">
+          <button class="btn secondary toggle-ingredients" data-id="${f.id}" type="button">${isExpanded ? 'Hide Ingredients' : `View Ingredients (${fIngredients.length})`}</button>
           <button class="btn secondary toggle-active" data-id="${f.id}" data-active="${f.is_active}" type="button">${f.is_active ? 'Mark Inactive' : 'Mark Active'}</button>
           <button class="btn danger delete-formula" data-id="${f.id}" type="button">Delete</button>
         </div>
       </div>
 
+      ${isExpanded ? `
       ${fIngredients.length ? `
       <table style="margin-top:10px"><thead><tr><th>Chemical</th><th>Qty per batch</th><th>Unit</th><th></th></tr></thead><tbody>
         ${fIngredients.map(i => `<tr>
@@ -121,8 +124,18 @@ async function loadFormulas() {
         </label>
         <button class="btn secondary" type="submit">+ Add Ingredient</button>
       </form>
+      ` : ''}
     </div>`;
   }).join('');
+
+  listEl.querySelectorAll('.toggle-ingredients').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      if (expandedFormulaIds.has(id)) expandedFormulaIds.delete(id);
+      else expandedFormulaIds.add(id);
+      loadFormulas();
+    });
+  });
 
   listEl.querySelectorAll('.add-ingredient-form').forEach(form => {
     form.addEventListener('submit', async (e) => {

@@ -154,13 +154,14 @@ async function renderManage() {
   const msg = document.getElementById('msg');
   const { data: chemicals } = await db.from('chemicals').select('*').order('name');
 
-  let html = `<table><thead><tr><th>Name</th><th>Alt Name</th><th>Unit</th><th>Reorder Level</th><th></th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Name</th><th>Alt Name</th><th>Unit</th><th>Current Price/Unit</th><th>Reorder Level</th><th></th></tr></thead><tbody>`;
   (chemicals || []).forEach(c => {
     if (editingId === c.id) {
       html += `<tr data-id="${c.id}">
         <td><input type="text" class="edit-name" value="${escapeHtml(c.name)}"></td>
         <td><input type="text" class="edit-alt" value="${escapeHtml(c.alt_name || '')}"></td>
         <td><input type="text" class="edit-unit" value="${escapeHtml(c.unit)}" style="width:60px"></td>
+        <td><input type="number" step="0.0001" class="edit-price" value="${c.current_unit_cost}" style="width:100px"></td>
         <td><input type="number" step="0.01" class="edit-reorder" value="${c.reorder_level}" style="width:90px"></td>
         <td>
           <button class="btn secondary save-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Save</button>
@@ -169,7 +170,7 @@ async function renderManage() {
       </tr>`;
     } else {
       html += `<tr>
-        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>${c.reorder_level}</td>
+        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>₹${Number(c.current_unit_cost).toFixed(4)}</td><td>${c.reorder_level}</td>
         <td><button class="btn secondary edit-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
       </tr>`;
     }
@@ -194,9 +195,10 @@ async function renderManage() {
     const name = row.querySelector('.edit-name').value.trim();
     const alt_name = row.querySelector('.edit-alt').value.trim() || null;
     const unit = row.querySelector('.edit-unit').value.trim();
+    const current_unit_cost = Number(row.querySelector('.edit-price').value);
     const reorder_level = Number(row.querySelector('.edit-reorder').value);
     btn.disabled = true; btn.textContent = 'Saving…';
-    const { error } = await db.from('chemicals').update({ name, alt_name, unit, reorder_level }).eq('id', btn.dataset.id);
+    const { error } = await db.from('chemicals').update({ name, alt_name, unit, current_unit_cost, reorder_level }).eq('id', btn.dataset.id);
     if (error) { showMsg(msg, 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
     showMsg(msg, 'success', 'Chemical updated.');
     editingId = null;
