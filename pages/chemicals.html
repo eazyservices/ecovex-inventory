@@ -83,7 +83,7 @@ async function renderPurchase() {
     <label>Chemical
       <select name="chemical_id" required>
         <option value="">Select chemical…</option>
-        ${(chemicals || []).map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.unit)})</option>`).join('')}
+        ${(chemicals || []).map(c => `<option value="${c.id}" data-unit="${escapeHtml(c.unit)}">${escapeHtml(c.name)} (${escapeHtml(c.unit)})</option>`).join('')}
       </select>
     </label>
     <label>Date<input type="date" name="purchase_date" value="${todayStr()}" required></label>
@@ -93,8 +93,16 @@ async function renderPurchase() {
         <option value="Opening Stock">Opening Stock (existing chemical, not a new purchase)</option>
       </select>
     </label>
-    <label>Quantity<input type="number" name="quantity" min="0" step="0.01" required></label>
-    <label>Unit Cost (₹ per g/ml, before GST) <span style="font-weight:400;color:#888">(leave 0 if unknown)</span><input type="number" name="unit_cost" min="0" step="0.0001" value="0"></label>
+    <div style="display:flex;gap:10px;align-items:flex-end">
+      <label style="flex:1">Quantity Purchased<input type="number" name="quantity_input" min="0" step="0.001" required></label>
+      <label style="width:110px">In
+        <select name="quantity_unit"></select>
+      </label>
+    </div>
+    <div id="qty-hint" class="empty">—</div>
+    <label>Total Cost Paid (₹, before GST) <span style="font-weight:400;color:#888">what the invoice/bill says for this quantity — not a per-unit rate</span>
+      <input type="number" name="cost_amount" min="0" step="0.01" value="0" required>
+    </label>
     <label>GST % <input type="number" name="gst_percent" min="0" step="0.01" value="0" list="gst-slabs">
       <datalist id="gst-slabs"><option value="0"><option value="5"><option value="12"><option value="18"><option value="28"></datalist>
     </label>
@@ -109,21 +117,48 @@ async function renderPurchase() {
   if (!chemicals || chemicals.length === 0) showMsg(msg, 'error', 'No chemicals set up yet — add one under Manage Chemicals first.');
 
   const form = document.getElementById('chem-purchase-form');
-  const qtyField = form.querySelector('[name="quantity"]');
-  const costField = form.querySelector('[name="unit_cost"]');
+  const chemicalSelect = form.querySelector('[name="chemical_id"]');
+  const qtyUnitSelect = form.querySelector('[name="quantity_unit"]');
+  const qtyField = form.querySelector('[name="quantity_input"]');
+  const costField = form.querySelector('[name="cost_amount"]');
   const gstField = form.querySelector('[name="gst_percent"]');
   const transportField = form.querySelector('[name="transport_cost"]');
   const preview = document.getElementById('cost-preview');
-  function updatePreview() {
+  const qtyHint = document.getElementById('qty-hint');
+
+  function baseUnit() {
+    const opt = chemicalSelect.selectedOptions[0];
+    return opt ? opt.dataset.unit : 'g';
+  }
+  function bulkUnit() {
+    return baseUnit() === 'g' ? 'kg' : 'L';
+  }
+  function refreshUnitOptions() {
+    const b = baseUnit();
+    const bulk = bulkUnit();
+    qtyUnitSelect.innerHTML = `<option value="bulk">${bulk}</option><option value="base">${b}</option>`;
+  }
+  function quantityInBaseUnit() {
     const qty = Number(qtyField.value) || 0;
-    const unitCost = Number(costField.value) || 0;
+    return qtyUnitSelect.value === 'bulk' ? qty * 1000 : qty;
+  }
+  function updatePreview() {
+    const qtyBase = quantityInBaseUnit();
+    const b = baseUnit();
+    qtyHint.textContent = qtyBase > 0 ? `= ${qtyBase.toFixed(2)} ${b} total` : '—';
+
+    const base = Number(costField.value) || 0;
     const gst = Number(gstField.value) || 0;
     const transport = Number(transportField.value) || 0;
-    const base = qty * unitCost;
     const gstAmt = Math.round(base * gst / 100 * 100) / 100;
-    preview.textContent = `Landed cost: ₹${base.toFixed(2)} + GST ₹${gstAmt.toFixed(2)} + transport ₹${transport.toFixed(2)} = ₹${(base + gstAmt + transport).toFixed(2)}`;
+    const landed = base + gstAmt + transport;
+    const perUnit = qtyBase > 0 ? landed / qtyBase : 0;
+    preview.innerHTML = `Base cost ₹${base.toFixed(2)} + GST ₹${gstAmt.toFixed(2)} + transport ₹${transport.toFixed(2)} = <strong>₹${landed.toFixed(2)} landed</strong>` +
+      (qtyBase > 0 ? `<br>≈ ₹${perUnit.toFixed(4)} per ${b} (₹${(perUnit*1000).toFixed(2)} per ${bulkUnit()})` : '');
   }
-  [qtyField, costField, gstField, transportField].forEach(f => f.addEventListener('input', updatePreview));
+  chemicalSelect.addEventListener('change', () => { refreshUnitOptions(); updatePreview(); });
+  [qtyUnitSelect, qtyField, costField, gstField, transportField].forEach(f => f.addEventListener('input', updatePreview));
+  refreshUnitOptions();
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -134,8 +169,8 @@ async function renderPurchase() {
       chemical_id: fd.get('chemical_id'),
       purchase_date: fd.get('purchase_date'),
       entry_type: fd.get('entry_type'),
-      quantity: Number(fd.get('quantity')),
-      unit_cost: Number(fd.get('unit_cost') || 0),
+      quantity: quantityInBaseUnit(),
+      cost_amount: Number(fd.get('cost_amount') || 0),
       gst_percent: Number(fd.get('gst_percent') || 0),
       transport_cost: Number(fd.get('transport_cost') || 0),
       supplier: fd.get('supplier') || null,
@@ -154,7 +189,7 @@ async function renderManage() {
   const msg = document.getElementById('msg');
   const { data: chemicals } = await db.from('chemicals').select('*').order('name');
 
-  let html = `<table><thead><tr><th>Name</th><th>Alt Name</th><th>Unit</th><th>Current Price/Unit</th><th>Reorder Level</th><th></th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Name</th><th>Alt Name</th><th>Unit</th><th>Price per g/ml <span style="font-weight:400;text-transform:none">(≈ per kg/L)</span></th><th>Reorder Level</th><th></th></tr></thead><tbody>`;
   (chemicals || []).forEach(c => {
     if (editingId === c.id) {
       html += `<tr data-id="${c.id}">
@@ -170,7 +205,7 @@ async function renderManage() {
       </tr>`;
     } else {
       html += `<tr>
-        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>₹${Number(c.current_unit_cost).toFixed(4)}</td><td>${c.reorder_level}</td>
+        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>₹${Number(c.current_unit_cost).toFixed(4)} <span class="empty">(≈₹${(Number(c.current_unit_cost)*1000).toFixed(2)}/kg or L)</span></td><td>${c.reorder_level}</td>
         <td><button class="btn secondary edit-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
       </tr>`;
     }

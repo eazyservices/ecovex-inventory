@@ -22,6 +22,7 @@
 
   <div class="subtabs" id="subtabs">
     <button data-mode="materials" class="active">Materials Purchases</button>
+    <button data-mode="chemicals">Chemicals Purchases</button>
     <button data-mode="solutions">Solutions Log</button>
   </div>
   <div id="msg"></div>
@@ -41,6 +42,30 @@ document.querySelectorAll('#subtabs button').forEach(btn => {
   });
 });
 
+function materialsOrChemicalsTable(data, nameKey) {
+  const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
+  return `<div class="empty" style="margin-bottom:10px">${data.length} entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
+  <table><thead><tr>
+    <th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Base Cost</th><th>GST %</th><th>GST Amount</th><th>Transport</th><th>Landed Cost</th><th>≈ Per Unit</th><th>Supplier</th><th>Invoice</th><th>Remarks</th>
+  </tr></thead><tbody>
+  ${data.map(r => `<tr>
+    <td>${escapeHtml(r.purchase_date)}</td>
+    <td>${escapeHtml(r[nameKey])}</td>
+    <td>${escapeHtml(r.entry_type)}</td>
+    <td>${r.quantity} ${escapeHtml(r.unit)}</td>
+    <td>₹${Number(r.base_cost).toFixed(2)}</td>
+    <td>${r.gst_percent}%</td>
+    <td>₹${Number(r.gst_amount).toFixed(2)}</td>
+    <td>₹${Number(r.transport_cost).toFixed(2)}</td>
+    <td><strong>₹${Number(r.total_landed_cost).toFixed(2)}</strong></td>
+    <td>₹${Number(r.unit_cost).toFixed(4)}</td>
+    <td>${escapeHtml(r.supplier || '—')}</td>
+    <td>${escapeHtml(r.invoice_ref || '—')}</td>
+    <td>${escapeHtml(r.remarks || '—')}</td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+
 async function render() {
   const content = document.getElementById('content');
   const msg = document.getElementById('msg');
@@ -51,25 +76,13 @@ async function render() {
     const { data, error } = await db.from('materials_purchase_history').select('*');
     if (error) { showMsg(content, 'error', error.message); return; }
     if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No purchases logged yet.</p>'; return; }
+    content.innerHTML = materialsOrChemicalsTable(data, 'material_name');
 
-    const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
-    content.innerHTML = `<div class="empty" style="margin-bottom:10px">${data.length} purchase entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
-    <table><thead><tr>
-      <th>Date</th><th>Item</th><th>Qty</th><th>Unit Cost</th><th>GST %</th><th>Transport</th><th>Landed Cost</th><th>Supplier</th><th>Invoice</th><th>Remarks</th>
-    </tr></thead><tbody>
-    ${data.map(r => `<tr>
-      <td>${escapeHtml(r.purchase_date)}</td>
-      <td>${escapeHtml(r.material_name)}</td>
-      <td>${r.quantity} ${escapeHtml(r.unit)}</td>
-      <td>₹${Number(r.unit_cost).toFixed(2)}</td>
-      <td>${r.gst_percent}%</td>
-      <td>₹${Number(r.transport_cost).toFixed(2)}</td>
-      <td><strong>₹${Number(r.total_landed_cost).toFixed(2)}</strong></td>
-      <td>${escapeHtml(r.supplier || '—')}</td>
-      <td>${escapeHtml(r.invoice_ref || '—')}</td>
-      <td>${escapeHtml(r.remarks || '—')}</td>
-    </tr>`).join('')}
-    </tbody></table>`;
+  } else if (mode === 'chemicals') {
+    const { data, error } = await db.from('chemical_purchase_history').select('*');
+    if (error) { showMsg(content, 'error', error.message); return; }
+    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No chemical purchases logged yet.</p>'; return; }
+    content.innerHTML = materialsOrChemicalsTable(data, 'chemical_name');
 
   } else {
     const { data, error } = await db.from('solutions_log_history').select('*');
@@ -79,7 +92,7 @@ async function render() {
     const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
     content.innerHTML = `<div class="empty" style="margin-bottom:10px">${data.length} entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
     <table><thead><tr>
-      <th>Date</th><th>Solution</th><th>Type</th><th>Litres</th><th>Bottles</th><th>Unit Cost/L</th><th>GST %</th><th>Transport</th><th>Landed Cost</th><th>Batch</th><th>By</th><th>Notes</th>
+      <th>Date</th><th>Solution</th><th>Type</th><th>Litres</th><th>Bottles</th><th>Base Cost</th><th>GST %</th><th>GST Amount</th><th>Transport</th><th>Ingredient Cost</th><th>Landed Cost</th><th>Batch</th><th>By</th><th>Notes</th>
     </tr></thead><tbody>
     ${data.map(r => `<tr>
       <td>${escapeHtml(r.log_date)}</td>
@@ -87,9 +100,11 @@ async function render() {
       <td>${escapeHtml(r.log_type)}</td>
       <td>${Number(r.litres).toFixed(2)}</td>
       <td>${Number(r.bottles).toFixed(2)}</td>
-      <td>₹${Number(r.unit_cost).toFixed(2)}</td>
+      <td>₹${Number(r.base_cost).toFixed(2)}</td>
       <td>${r.gst_percent}%</td>
+      <td>₹${Number(r.gst_amount).toFixed(2)}</td>
       <td>₹${Number(r.transport_cost).toFixed(2)}</td>
+      <td>₹${Number(r.ingredient_cost || 0).toFixed(2)}</td>
       <td><strong>₹${Number(r.total_landed_cost).toFixed(2)}</strong></td>
       <td>${escapeHtml(r.batch_ref || '—')}</td>
       <td>${escapeHtml(r.prepared_by || '—')}</td>
