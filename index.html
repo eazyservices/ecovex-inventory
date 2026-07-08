@@ -68,9 +68,9 @@ async function loadStock() {
   if (!chemicals || chemicals.length === 0) {
     html += `<p class="empty">No chemicals yet. Add some under <a href="pages/chemicals.html">Chemicals</a>.</p>`;
   } else {
-    html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Available</th><th>Avg Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
+    html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Available</th><th>Cost per kg/L</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
     chemicals.forEach(c => {
-      html += `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.unit)}</td><td>${Number(c.available_qty).toFixed(2)}</td><td>₹${Number(c.avg_unit_cost).toFixed(4)}</td><td>${c.reorder_level}</td>
+      html += `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.unit)}</td><td>${Number(c.available_qty).toFixed(2)}</td><td>₹${(Number(c.avg_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.avg_unit_cost).toFixed(4)}/g or ml)</span></td><td>${c.reorder_level}</td>
       <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
     });
     html += `</tbody></table>`;
