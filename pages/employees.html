@@ -112,31 +112,75 @@ async function renderHistory() {
   const content = document.getElementById('content');
   const { data: attendants } = await db.from('attendants').select('id,name,code').order('name');
 
-  content.innerHTML = `<label style="max-width:360px;display:block;margin-bottom:16px">Employee
-    <select id="history-emp-select">
-      <option value="">Select employee…</option>
-      ${(attendants || []).map(a => `<option value="${a.id}" ${a.id === historyEmployeeId ? 'selected' : ''}>${escapeHtml(a.name)}${a.code ? ' (' + escapeHtml(a.code) + ')' : ''}</option>`).join('')}
-    </select>
-  </label><div id="history-results"></div>`;
+  content.innerHTML = `<div class="row-actions" style="align-items:flex-end">
+    <label style="max-width:280px">Employee
+      <select id="history-emp-select">
+        <option value="">All Employees</option>
+        ${(attendants || []).map(a => `<option value="${a.id}" ${a.id === historyEmployeeId ? 'selected' : ''}>${escapeHtml(a.name)}${a.code ? ' (' + escapeHtml(a.code) + ')' : ''}</option>`).join('')}
+      </select>
+    </label>
+    <label style="max-width:170px">From<input type="date" id="history-date-from"></label>
+    <label style="max-width:170px">To<input type="date" id="history-date-to"></label>
+    <button class="btn secondary" id="history-download-btn" type="button">Download CSV</button>
+  </div>
+  <div id="history-results"></div>`;
 
   document.getElementById('history-emp-select').addEventListener('change', (e) => {
     historyEmployeeId = e.target.value;
     loadHistory();
   });
+  document.getElementById('history-date-from').addEventListener('change', loadHistory);
+  document.getElementById('history-date-to').addEventListener('change', loadHistory);
+  document.getElementById('history-download-btn').addEventListener('click', downloadCsv);
 
-  if (historyEmployeeId) loadHistory();
+  let currentRows = [];
+
+  loadHistory();
 
   async function loadHistory() {
     const resultsBox = document.getElementById('history-results');
-    if (!historyEmployeeId) { resultsBox.innerHTML = ''; return; }
     resultsBox.innerHTML = '<p class="empty">Loading…</p>';
-    const { data, error } = await db.from('employee_issuance_history').select('*').eq('attendant_id', historyEmployeeId);
-    if (error) { showMsg(resultsBox, 'error', error.message); return; }
-    if (!data || data.length === 0) { resultsBox.innerHTML = '<p class="empty">No issuance history for this employee yet.</p>'; return; }
 
-    resultsBox.innerHTML = `<table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Qty</th><th>Litres</th><th>Issued By</th><th>Remarks</th></tr></thead><tbody>
-    ${data.map(r => `<tr><td>${escapeHtml(r.issue_date)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.item_name)}</td><td>${r.qty_issued}</td><td>${r.litres_issued ? Number(r.litres_issued).toFixed(2) : '—'}</td><td>${escapeHtml(r.issued_by || '—')}</td><td>${escapeHtml(r.remarks || '—')}</td></tr>`).join('')}
+    let query = db.from('employee_issuance_history').select('*');
+    if (historyEmployeeId) query = query.eq('attendant_id', historyEmployeeId);
+    const from = document.getElementById('history-date-from').value;
+    const to = document.getElementById('history-date-to').value;
+    if (from) query = query.gte('issue_date', from);
+    if (to) query = query.lte('issue_date', to);
+
+    const { data, error } = await query;
+    if (error) { showMsg(resultsBox, 'error', error.message); return; }
+    currentRows = data || [];
+    if (currentRows.length === 0) { resultsBox.innerHTML = '<p class="empty">No issuance history for this selection.</p>'; return; }
+
+    resultsBox.innerHTML = `<div class="empty" style="margin-bottom:10px">${currentRows.length} entries</div>
+    <table><thead><tr><th>Date</th>${historyEmployeeId ? '' : '<th>Employee</th>'}<th>Category</th><th>Item</th><th>Qty</th><th>Litres</th><th>Issued By</th><th>Remarks</th></tr></thead><tbody>
+    ${currentRows.map(r => `<tr><td>${escapeHtml(r.issue_date)}</td>${historyEmployeeId ? '' : `<td>${escapeHtml(r.attendant_name)}</td>`}<td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.item_name)}</td><td>${r.qty_issued}</td><td>${r.litres_issued ? Number(r.litres_issued).toFixed(2) : '—'}</td><td>${escapeHtml(r.issued_by || '—')}</td><td>${escapeHtml(r.remarks || '—')}</td></tr>`).join('')}
     </tbody></table>`;
+  }
+
+  function downloadCsv() {
+    if (currentRows.length === 0) { showMsg(document.getElementById('msg'), 'error', 'Nothing to download for this selection.'); return; }
+    const headers = ['Date', 'Employee', 'Employee Code', 'Category', 'Item', 'Qty Issued', 'Litres Issued', 'Issued By', 'Remarks'];
+    const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const lines = [headers.join(',')];
+    currentRows.forEach(r => {
+      lines.push([
+        r.issue_date, r.attendant_name, r.attendant_code || '', r.category, r.item_name,
+        r.qty_issued, r.litres_issued ?? '', r.issued_by || '', r.remarks || '',
+      ].map(escapeCsv).join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const from = document.getElementById('history-date-from').value || 'all';
+    const to = document.getElementById('history-date-to').value || 'all';
+    a.href = url;
+    a.download = `issuance-history_${from}_to_${to}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 
