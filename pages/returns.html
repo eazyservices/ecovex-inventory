@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Returns</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
+    <div>
+      <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+      <p>Returns — items handed back by an employee (leaving, or just returning extra/unused stock)</p>
+    </div>
+  </header>
+  <nav id="nav"></nav>
+
+  <div id="msg"></div>
+
+  <form class="card" id="header-form" style="max-width:480px">
+    <label>Employee
+      <select id="employee-select" required></select>
+    </label>
+    <label>Return Date<input type="date" name="return_date" id="return-date" value=""></label>
+    <label>Received By<input type="text" name="returned_to" placeholder="who checked/received the return"></label>
+    <label>Remarks<input type="text" name="remarks" placeholder="e.g. employee exit on 12 July"></label>
+  </form>
+
+  <div id="items-section" style="display:none">
+    <div class="row-actions">
+      <button class="btn secondary" id="fill-outstanding-btn" type="button">Fill All Outstanding Qty</button>
+      <button class="btn secondary" id="clear-all-btn" type="button">Clear All</button>
+    </div>
+
+    <div class="section-title">Materials</div>
+    <div class="qty-row header-row"><span>Item</span><span>Qty Returned</span><span>Condition</span></div>
+    <div id="materials-rows"></div>
+
+    <div class="section-title">Solutions (Litres)</div>
+    <div class="qty-row header-row"><span>Solution</span><span>Litres Returned</span><span>Condition</span></div>
+    <div id="solutions-rows"></div>
+
+    <div style="margin-top:20px">
+      <button class="btn" id="submit-return-btn">Log This Return</button>
+    </div>
+  </div>
+
+  <div class="section-title">Recent Returns</div>
+  <div id="recent-returns"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+renderNav('returns', 'pages');
+document.getElementById('return-date').value = todayStr();
+
+let materials = [];
+let solutions = [];
+let outstandingMaterials = {}; // material_id -> qty_outstanding
+let outstandingSolutions = {}; // solution_id -> litres_outstanding
+
+async function init() {
+  const { data: attendants } = await db.from('attendants').select('id,name,code,active').order('name');
+  const sel = document.getElementById('employee-select');
+  sel.innerHTML = `<option value="">Select employee…</option>` +
+    (attendants || []).map(a => `<option value="${a.id}">${escapeHtml(a.name)}${a.code ? ' (' + escapeHtml(a.code) + ')' : ''}${a.active ? '' : ' — inactive'}</option>`).join('');
+  sel.addEventListener('change', onEmployeeChange);
+
+  const { data: m } = await db.from('materials').select('id,name,unit').order('name');
+  const { data: s } = await db.from('solutions').select('id,name,bottle_size_ml').order('name');
+  materials = m || [];
+  solutions = s || [];
+
+  loadRecentReturns();
+}
+
+async function onEmployeeChange() {
+  const attendantId = document.getElementById('employee-select').value;
+  const itemsSection = document.getElementById('items-section');
+  if (!attendantId) { itemsSection.style.display = 'none'; return; }
+
+  const [{ data: om }, { data: os }] = await Promise.all([
+    db.from('employee_outstanding_materials').select('*').eq('attendant_id', attendantId),
+    db.from('employee_outstanding_solutions').select('*').eq('attendant_id', attendantId),
+  ]);
+
+  outstandingMaterials = {};
+  (om || []).forEach(r => { if (r.qty_outstanding > 0) outstandingMaterials[r.material_id] = r.qty_outstanding; });
+  outstandingSolutions = {};
+  (os || []).forEach(r => { if (r.litres_outstanding > 0) outstandingSolutions[r.solution_id] = r.litres_outstanding; });
+
+  renderItemRows();
+  itemsSection.style.display = '';
+}
+
+function renderItemRows() {
+  const mBox = document.getElementById('materials-rows');
+  mBox.innerHTML = materials.map(m => {
+    const outstanding = outstandingMaterials[m.id];
+    return `<div class="qty-row">
+      <span>${escapeHtml(m.name)}${outstanding ? ` <span class="empty">(has ${outstanding})</span>` : ''}</span>
+      <input type="number" min="0" step="1" data-type="material" data-id="${m.id}">
+      <select data-condition-for="material" data-id="${m.id}">
+        <option value="Usable">Usable</option>
+        <option value="Not Usable">Not Usable</option>
+      </select>
+    </div>`;
+  }).join('');
+
+  const sBox = document.getElementById('solutions-rows');
+  sBox.innerHTML = solutions.map(s => {
+    const outstanding = outstandingSolutions[s.id];
+    return `<div class="qty-row">
+      <span>${escapeHtml(s.name)}${outstanding ? ` <span class="empty">(has ${outstanding.toFixed(2)}L)</span>` : ''}</span>
+      <input type="number" min="0" step="0.01" data-type="solution" data-id="${s.id}">
+      <select data-condition-for="solution" data-id="${s.id}">
+        <option value="Usable">Usable</option>
+        <option value="Not Usable">Not Usable</option>
+      </select>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('fill-outstanding-btn').addEventListener('click', () => {
+  document.querySelectorAll('input[data-type="material"]').forEach(inp => {
+    const val = outstandingMaterials[inp.dataset.id];
+    inp.value = val ? val : '';
+  });
+  document.querySelectorAll('input[data-type="solution"]').forEach(inp => {
+    const val = outstandingSolutions[inp.dataset.id];
+    inp.value = val ? val : '';
+  });
+});
+
+document.getElementById('clear-all-btn').addEventListener('click', () => {
+  document.querySelectorAll('input[data-type]').forEach(inp => inp.value = '');
+});
+
+document.getElementById('submit-return-btn').addEventListener('click', async () => {
+  const msg = document.getElementById('msg');
+  msg.innerHTML = '';
+  const attendantId = document.getElementById('employee-select').value;
+  if (!attendantId) return showMsg(msg, 'error', 'Select an employee.');
+
+  const return_date = document.getElementById('return-date').value;
+  const returned_to = document.querySelector('#header-form [name="returned_to"]').value || null;
+  const remarks = document.querySelector('#header-form [name="remarks"]').value || null;
+
+  const rows = [];
+  document.querySelectorAll('input[data-type]').forEach(inp => {
+    const qty = Number(inp.value);
+    if (qty > 0) {
+      const type = inp.dataset.type;
+      const conditionSelect = document.querySelector(`select[data-condition-for="${type}"][data-id="${inp.dataset.id}"]`);
+      rows.push({
+        return_date,
+        attendant_id: attendantId,
+        category: type === 'material' ? 'Material' : 'Solution',
+        material_id: type === 'material' ? inp.dataset.id : null,
+        solution_id: type === 'solution' ? inp.dataset.id : null,
+        qty_returned: qty,
+        condition: conditionSelect.value,
+        returned_to,
+        remarks,
+      });
+    }
+  });
+
+  if (rows.length === 0) return showMsg(msg, 'error', 'Enter a quantity for at least one item.');
+
+  const btn = document.getElementById('submit-return-btn');
+  btn.disabled = true; btn.textContent = 'Logging…';
+  const { error } = await db.from('returns_log').insert(rows);
+  btn.disabled = false; btn.textContent = 'Log This Return';
+
+  if (error) return showMsg(msg, 'error', error.message);
+  showMsg(msg, 'success', `Logged ${rows.length} item${rows.length > 1 ? 's' : ''} returned. Usable items are already back in stock.`);
+  document.querySelectorAll('input[data-type]').forEach(inp => inp.value = '');
+  onEmployeeChange(); // refresh outstanding hints
+  loadRecentReturns();
+});
+
+async function loadRecentReturns() {
+  const box = document.getElementById('recent-returns');
+  const { data, error } = await db.from('returns_history').select('*').limit(30);
+  if (error) { showMsg(box, 'error', error.message); return; }
+  if (!data || data.length === 0) { box.innerHTML = '<p class="empty">No returns logged yet.</p>'; return; }
+
+  box.innerHTML = `<table><thead><tr><th>Date</th><th>Employee</th><th>Category</th><th>Item</th><th>Qty</th><th>Condition</th><th>Received By</th><th>Remarks</th></tr></thead><tbody>
+  ${data.map(r => `<tr>
+    <td>${escapeHtml(r.return_date)}</td>
+    <td>${escapeHtml(r.attendant_name)}</td>
+    <td>${escapeHtml(r.category)}</td>
+    <td>${escapeHtml(r.item_name)}</td>
+    <td>${r.qty_returned}</td>
+    <td><span class="badge ${r.condition === 'Usable' ? 'ok' : 'reorder'}">${escapeHtml(r.condition)}</span></td>
+    <td>${escapeHtml(r.returned_to || '—')}</td>
+    <td>${escapeHtml(r.remarks || '—')}</td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+
+init();
+</script>
+</body>
+</html>
