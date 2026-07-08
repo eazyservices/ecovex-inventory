@@ -57,9 +57,23 @@ async function renderList() {
   if (error) { showMsg(content, 'error', error.message); return; }
   if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No employees yet — add one.</p>'; return; }
 
-  content.innerHTML = `<table><thead><tr><th>Name</th><th>Code</th><th>Phone</th><th>Location</th><th>Joined</th><th>Active</th></tr></thead><tbody>
-  ${data.map(a => `<tr><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.code || '—')}</td><td>${escapeHtml(a.phone || '—')}</td><td>${escapeHtml(a.location || '—')}</td><td>${escapeHtml(a.joined_date || '—')}</td><td>${a.active ? '✔' : '—'}</td></tr>`).join('')}
+  content.innerHTML = `<table><thead><tr><th>Name</th><th>Code</th><th>Phone</th><th>Location</th><th>Joined</th><th>Status</th><th></th></tr></thead><tbody>
+  ${data.map(a => `<tr>
+    <td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.code || '—')}</td><td>${escapeHtml(a.phone || '—')}</td><td>${escapeHtml(a.location || '—')}</td><td>${escapeHtml(a.joined_date || '—')}</td>
+    <td><span class="badge ${a.active ? 'ok' : 'reorder'}">${a.active ? '✔ Active' : 'Inactive'}</span></td>
+    <td><button class="btn secondary toggle-active-emp" data-id="${a.id}" data-active="${a.active}" style="padding:4px 10px;font-size:12px">${a.active ? 'Deactivate' : 'Reactivate'}</button></td>
+  </tr>`).join('')}
   </tbody></table>`;
+
+  content.querySelectorAll('.toggle-active-emp').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const newActive = btn.dataset.active !== 'true';
+      if (!newActive && !confirm('Deactivate this employee? They\u2019ll stop showing up as an option for new kit issuances, but their past history stays intact.')) return;
+      const { error } = await db.from('attendants').update({ active: newActive }).eq('id', btn.dataset.id);
+      if (error) { showMsg(document.getElementById('msg'), 'error', error.message); return; }
+      renderList();
+    });
+  });
 }
 
 async function renderAdd() {

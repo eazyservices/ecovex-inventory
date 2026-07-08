@@ -59,14 +59,14 @@ async function renderStock() {
   const reorderCount = data.filter(c => c.status === 'Reorder').length;
   let html = reorderCount > 0 ? `<div class="msg error">⚠ ${reorderCount} chemical${reorderCount > 1 ? 's' : ''} at or below reorder level</div>` : '';
 
-  html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Purchased</th><th>Used</th><th>Available</th><th>Avg Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
+  html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Purchased</th><th>Used</th><th>Available</th><th>Cost per kg/L</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
   ${data.map(c => `<tr>
     <td>${escapeHtml(c.name)}${c.alt_name ? `<div class="empty">${escapeHtml(c.alt_name)}</div>` : ''}</td>
     <td>${escapeHtml(c.unit)}</td>
     <td>${Number(c.total_purchased).toFixed(2)}</td>
     <td>${Number(c.total_used).toFixed(2)}</td>
     <td>${Number(c.available_qty).toFixed(2)}</td>
-    <td>₹${Number(c.avg_unit_cost).toFixed(4)}</td>
+    <td>₹${(Number(c.avg_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.avg_unit_cost).toFixed(4)}/g or ml)</span></td>
     <td>${c.reorder_level}</td>
     <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td>
   </tr>`).join('')}
@@ -154,7 +154,7 @@ async function renderPurchase() {
     const landed = base + gstAmt + transport;
     const perUnit = qtyBase > 0 ? landed / qtyBase : 0;
     preview.innerHTML = `Base cost ₹${base.toFixed(2)} + GST ₹${gstAmt.toFixed(2)} + transport ₹${transport.toFixed(2)} = <strong>₹${landed.toFixed(2)} landed</strong>` +
-      (qtyBase > 0 ? `<br>≈ ₹${perUnit.toFixed(4)} per ${b} (₹${(perUnit*1000).toFixed(2)} per ${bulkUnit()})` : '');
+      (qtyBase > 0 ? `<br>≈ ₹${(perUnit*1000).toFixed(2)} per ${bulkUnit()} (₹${perUnit.toFixed(4)} per ${b})` : '');
   }
   chemicalSelect.addEventListener('change', () => { refreshUnitOptions(); updatePreview(); });
   [qtyUnitSelect, qtyField, costField, gstField, transportField].forEach(f => f.addEventListener('input', updatePreview));
@@ -189,14 +189,14 @@ async function renderManage() {
   const msg = document.getElementById('msg');
   const { data: chemicals } = await db.from('chemicals').select('*').order('name');
 
-  let html = `<table><thead><tr><th>Name</th><th>Alt Name</th><th>Unit</th><th>Price per g/ml <span style="font-weight:400;text-transform:none">(≈ per kg/L)</span></th><th>Reorder Level</th><th></th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Name</th><th>Alt Name</th><th>Unit</th><th>Price per kg/L <span style="font-weight:400;text-transform:none">(≈ per g/ml)</span></th><th>Reorder Level</th><th></th></tr></thead><tbody>`;
   (chemicals || []).forEach(c => {
     if (editingId === c.id) {
       html += `<tr data-id="${c.id}">
         <td><input type="text" class="edit-name" value="${escapeHtml(c.name)}"></td>
         <td><input type="text" class="edit-alt" value="${escapeHtml(c.alt_name || '')}"></td>
         <td><input type="text" class="edit-unit" value="${escapeHtml(c.unit)}" style="width:60px"></td>
-        <td><input type="number" step="0.0001" class="edit-price" value="${c.current_unit_cost}" style="width:100px"></td>
+        <td><input type="number" step="0.01" class="edit-price" value="${(Number(c.current_unit_cost)*1000).toFixed(2)}" style="width:100px"></td>
         <td><input type="number" step="0.01" class="edit-reorder" value="${c.reorder_level}" style="width:90px"></td>
         <td>
           <button class="btn secondary save-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Save</button>
@@ -205,7 +205,7 @@ async function renderManage() {
       </tr>`;
     } else {
       html += `<tr>
-        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>₹${Number(c.current_unit_cost).toFixed(4)} <span class="empty">(≈₹${(Number(c.current_unit_cost)*1000).toFixed(2)}/kg or L)</span></td><td>${c.reorder_level}</td>
+        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>₹${(Number(c.current_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.current_unit_cost).toFixed(4)}/g or ml)</span></td><td>${c.reorder_level}</td>
         <td><button class="btn secondary edit-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
       </tr>`;
     }
@@ -230,7 +230,7 @@ async function renderManage() {
     const name = row.querySelector('.edit-name').value.trim();
     const alt_name = row.querySelector('.edit-alt').value.trim() || null;
     const unit = row.querySelector('.edit-unit').value.trim();
-    const current_unit_cost = Number(row.querySelector('.edit-price').value);
+    const current_unit_cost = Number(row.querySelector('.edit-price').value) / 1000; // entered as per-kg/L, stored as per-g/ml
     const reorder_level = Number(row.querySelector('.edit-reorder').value);
     btn.disabled = true; btn.textContent = 'Saving…';
     const { error } = await db.from('chemicals').update({ name, alt_name, unit, current_unit_cost, reorder_level }).eq('id', btn.dataset.id);
