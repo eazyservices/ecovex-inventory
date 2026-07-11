@@ -28,6 +28,15 @@
     <label>Solution
       <select name="solution_id" id="new-formula-solution" required></select>
     </label>
+    <div>
+      <button type="button" class="btn secondary" id="toggle-new-solution-btn" style="padding:6px 12px;font-size:12px">+ Create a new solution</button>
+    </div>
+    <div id="new-solution-inline" class="card-box" style="display:none">
+      <label>New Solution Name<input type="text" id="inline-solution-name" placeholder="e.g. Carpet Cleaner"></label>
+      <label>Bottle Size (ml)<input type="number" id="inline-solution-size" min="1" step="1" value="500"></label>
+      <label>Reorder Level (L)<input type="number" id="inline-solution-reorder" min="0" step="0.5" value="1"></label>
+      <button type="button" class="btn secondary" id="save-inline-solution-btn">Save Solution</button>
+    </div>
     <label>Formula Name<input type="text" name="name" required placeholder="e.g. Tyre Polish — V5"></label>
     <label>Base Batch Size (Litres) <span style="font-weight:400;color:#888">(the batch size these quantities are written for)</span>
       <input type="number" name="base_batch_litres" min="0.01" step="0.01" required>
@@ -48,13 +57,40 @@ let chemicals = [];
 let expandedFormulaIds = new Set();
 
 async function init() {
-  const { data: solutions } = await db.from('solutions').select('id,name').order('name');
-  document.getElementById('new-formula-solution').innerHTML =
-    `<option value="">Select solution…</option>` + (solutions || []).map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  await refreshSolutionDropdown();
   const { data: c } = await db.from('chemicals').select('id,name,unit').order('name');
   chemicals = c || [];
   loadFormulas();
 }
+
+async function refreshSolutionDropdown(selectId) {
+  const { data: solutions } = await db.from('solutions').select('id,name').order('name');
+  document.getElementById('new-formula-solution').innerHTML =
+    `<option value="">Select solution…</option>` + (solutions || []).map(s => `<option value="${s.id}" ${s.id === selectId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+}
+
+document.getElementById('toggle-new-solution-btn').addEventListener('click', () => {
+  const box = document.getElementById('new-solution-inline');
+  box.style.display = box.style.display === 'none' ? '' : 'none';
+});
+
+document.getElementById('save-inline-solution-btn').addEventListener('click', async () => {
+  const name = document.getElementById('inline-solution-name').value.trim();
+  const bottle_size_ml = Number(document.getElementById('inline-solution-size').value);
+  const reorder_level_l = Number(document.getElementById('inline-solution-reorder').value);
+  if (!name) return showMsg(msg, 'error', 'Enter a name for the new solution.');
+
+  const btn = document.getElementById('save-inline-solution-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { data, error } = await db.from('solutions').insert({ name, bottle_size_ml, reorder_level_l }).select().single();
+  btn.disabled = false; btn.textContent = 'Save Solution';
+  if (error) return showMsg(msg, 'error', error.message);
+
+  showMsg(msg, 'success', `"${name}" added — selected below.`);
+  await refreshSolutionDropdown(data.id);
+  document.getElementById('inline-solution-name').value = '';
+  document.getElementById('new-solution-inline').style.display = 'none';
+});
 
 document.getElementById('new-formula-form').addEventListener('submit', async (e) => {
   e.preventDefault();
