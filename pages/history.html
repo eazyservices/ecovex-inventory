@@ -33,6 +33,7 @@
 <script>
 renderNav('history', 'pages');
 let mode = 'materials';
+let editingRowId = { materials: null, chemicals: null, solutions: null, returns: null };
 
 document.querySelectorAll('#subtabs button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -43,77 +44,134 @@ document.querySelectorAll('#subtabs button').forEach(btn => {
   });
 });
 
-function materialsOrChemicalsTable(data, nameKey) {
-  const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
-  return `<div class="empty" style="margin-bottom:10px">${data.length} entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
-  <table><thead><tr>
-    <th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Base Cost</th><th>GST %</th><th>GST Amount</th><th>Transport</th><th>Landed Cost</th><th>≈ Per Unit</th><th>Supplier</th><th>Invoice</th><th>Remarks</th>
-  </tr></thead><tbody>
-  ${data.map(r => `<tr>
-    <td>${escapeHtml(r.purchase_date)}</td>
-    <td>${escapeHtml(r[nameKey])}</td>
-    <td>${escapeHtml(r.entry_type)}</td>
-    <td>${r.quantity} ${escapeHtml(r.unit)}</td>
-    <td>₹${Number(r.base_cost).toFixed(2)}</td>
-    <td>${r.gst_percent}%</td>
-    <td>₹${Number(r.gst_amount).toFixed(2)}</td>
-    <td>₹${Number(r.transport_cost).toFixed(2)}</td>
-    <td><strong>₹${Number(r.total_landed_cost).toFixed(2)}</strong></td>
-    <td>₹${Number(r.unit_cost).toFixed(4)}</td>
-    <td>${escapeHtml(r.supplier || '—')}</td>
-    <td>${escapeHtml(r.invoice_ref || '—')}</td>
-    <td>${escapeHtml(r.remarks || '—')}</td>
-  </tr>`).join('')}
-  </tbody></table>`;
+async function deleteRow(table, id, label) {
+  if (!confirm(`Delete this ${label} entry? This can't be undone.`)) return false;
+  const { error } = await db.from(table).delete().eq('id', id);
+  if (error) { showMsg(document.getElementById('msg'), 'error', error.message); return false; }
+  showMsg(document.getElementById('msg'), 'success', 'Entry deleted.');
+  return true;
 }
 
-async function render() {
-  const content = document.getElementById('content');
-  const msg = document.getElementById('msg');
-  content.innerHTML = '<p class="empty">Loading…</p>';
-  msg.innerHTML = '';
+// ---------------- Materials & Chemicals (shared table shape) ----------------
 
-  if (mode === 'materials') {
-    const { data, error } = await db.from('materials_purchase_history').select('*');
-    if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No purchases logged yet.</p>'; return; }
-    content.innerHTML = materialsOrChemicalsTable(data, 'material_name');
-
-  } else if (mode === 'chemicals') {
-    const { data, error } = await db.from('chemical_purchase_history').select('*');
-    if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No chemical purchases logged yet.</p>'; return; }
-    content.innerHTML = materialsOrChemicalsTable(data, 'chemical_name');
-
-  } else if (mode === 'returns') {
-    const { data, error } = await db.from('returns_history').select('*');
-    if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No returns logged yet.</p>'; return; }
-
-    content.innerHTML = `<table><thead><tr><th>Date</th><th>Employee</th><th>Category</th><th>Item</th><th>Qty</th><th>Condition</th><th>Received By</th><th>Remarks</th></tr></thead><tbody>
-    ${data.map(r => `<tr>
-      <td>${escapeHtml(r.return_date)}</td>
-      <td>${escapeHtml(r.attendant_name)}</td>
-      <td>${escapeHtml(r.category)}</td>
-      <td>${escapeHtml(r.item_name)}</td>
-      <td>${r.qty_returned}</td>
-      <td><span class="badge ${r.condition === 'Usable' ? 'ok' : 'reorder'}">${escapeHtml(r.condition)}</span></td>
-      <td>${escapeHtml(r.returned_to || '—')}</td>
+function materialsOrChemicalsTable(data, nameKey, tableName, tabKey) {
+  const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
+  const rows = data.map(r => {
+    if (editingRowId[tabKey] === r.id) {
+      return `<tr data-id="${r.id}">
+        <td><input type="date" class="ed-date" value="${r.purchase_date}" style="width:130px"></td>
+        <td>${escapeHtml(r[nameKey])}</td>
+        <td><select class="ed-entrytype"><option value="Purchase" ${r.entry_type === 'Purchase' ? 'selected' : ''}>Purchase</option><option value="Opening Stock" ${r.entry_type === 'Opening Stock' ? 'selected' : ''}>Opening Stock</option></select></td>
+        <td><input type="number" step="0.01" class="ed-qty" value="${r.quantity}" style="width:80px"></td>
+        <td><input type="number" step="0.01" class="ed-cost" value="${r.base_cost}" style="width:90px"></td>
+        <td><input type="number" step="0.01" class="ed-gst" value="${r.gst_percent}" style="width:70px"></td>
+        <td>—</td>
+        <td><input type="number" step="0.01" class="ed-transport" value="${r.transport_cost}" style="width:80px"></td>
+        <td>—</td><td>—</td>
+        <td><input type="text" class="ed-supplier" value="${escapeHtml(r.supplier || '')}" style="width:100px"></td>
+        <td><input type="text" class="ed-invoice" value="${escapeHtml(r.invoice_ref || '')}" style="width:100px"></td>
+        <td><input type="text" class="ed-remarks" value="${escapeHtml(r.remarks || '')}" style="width:120px"></td>
+        <td style="white-space:nowrap">
+          <button class="btn secondary save-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Save</button>
+          <button class="btn secondary cancel-row" style="padding:4px 8px;font-size:12px">Cancel</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
+      <td>${escapeHtml(r.purchase_date)}</td>
+      <td>${escapeHtml(r[nameKey])}</td>
+      <td>${escapeHtml(r.entry_type)}</td>
+      <td>${r.quantity} ${escapeHtml(r.unit)}</td>
+      <td>₹${Number(r.base_cost).toFixed(2)}</td>
+      <td>${r.gst_percent}%</td>
+      <td>₹${Number(r.gst_amount).toFixed(2)}</td>
+      <td>₹${Number(r.transport_cost).toFixed(2)}</td>
+      <td><strong>₹${Number(r.total_landed_cost).toFixed(2)}</strong></td>
+      <td>₹${Number(r.unit_cost).toFixed(4)}</td>
+      <td>${escapeHtml(r.supplier || '—')}</td>
+      <td>${escapeHtml(r.invoice_ref || '—')}</td>
       <td>${escapeHtml(r.remarks || '—')}</td>
-    </tr>`).join('')}
-    </tbody></table>`;
+      <td style="white-space:nowrap">
+        <button class="btn secondary edit-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Edit</button>
+        <button class="btn danger delete-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
 
-  } else {
-    const { data, error } = await db.from('solutions_log_history').select('*');
-    if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No solution entries logged yet.</p>'; return; }
+  setTimeout(() => wireMaterialsChemicalsActions(data, tableName, tabKey), 0);
 
-    const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
-    content.innerHTML = `<div class="empty" style="margin-bottom:10px">${data.length} entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
-    <table><thead><tr>
-      <th>Date</th><th>Solution</th><th>Type</th><th>Litres</th><th>Bottles</th><th>Base Cost</th><th>GST %</th><th>GST Amount</th><th>Transport</th><th>Ingredient Cost</th><th>Landed Cost</th><th>Batch</th><th>By</th><th>Notes</th>
-    </tr></thead><tbody>
-    ${data.map(r => `<tr>
+  return `<div class="empty" style="margin-bottom:10px">${data.length} entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
+  <table><thead><tr>
+    <th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Base Cost</th><th>GST %</th><th>GST Amount</th><th>Transport</th><th>Landed Cost</th><th>≈ Per Unit</th><th>Supplier</th><th>Invoice</th><th>Remarks</th><th></th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function wireMaterialsChemicalsActions(data, tableName, tabKey) {
+  const content = document.getElementById('content');
+  content.querySelectorAll('.edit-row').forEach(btn => {
+    btn.addEventListener('click', () => { editingRowId[tabKey] = btn.dataset.id; render(); });
+  });
+  content.querySelectorAll('.cancel-row').forEach(btn => {
+    btn.addEventListener('click', () => { editingRowId[tabKey] = null; render(); });
+  });
+  content.querySelectorAll('.delete-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await deleteRow(tableName, btn.dataset.id, tabKey === 'materials' ? 'material purchase' : 'chemical purchase');
+      if (ok) render();
+    });
+  });
+  content.querySelectorAll('.save-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      const update = {
+        purchase_date: row.querySelector('.ed-date').value,
+        entry_type: row.querySelector('.ed-entrytype').value,
+        quantity: Number(row.querySelector('.ed-qty').value),
+        cost_amount: Number(row.querySelector('.ed-cost').value),
+        gst_percent: Number(row.querySelector('.ed-gst').value),
+        transport_cost: Number(row.querySelector('.ed-transport').value),
+        supplier: row.querySelector('.ed-supplier').value || null,
+        invoice_ref: row.querySelector('.ed-invoice').value || null,
+        remarks: row.querySelector('.ed-remarks').value || null,
+      };
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const { error } = await db.from(tableName).update(update).eq('id', btn.dataset.id);
+      if (error) { showMsg(document.getElementById('msg'), 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
+      showMsg(document.getElementById('msg'), 'success', 'Entry updated.');
+      editingRowId[tabKey] = null;
+      render();
+    });
+  });
+}
+
+// ---------------- Solutions Log ----------------
+
+function solutionsTable(data) {
+  const totalSpend = data.reduce((sum, r) => sum + Number(r.total_landed_cost || 0), 0);
+  const rows = data.map(r => {
+    const isPrepared = r.log_type === 'Prepared';
+    if (editingRowId.solutions === r.id && !isPrepared) {
+      return `<tr data-id="${r.id}">
+        <td><input type="date" class="ed-date" value="${r.log_date}" style="width:130px"></td>
+        <td>${escapeHtml(r.solution_name)}</td>
+        <td><select class="ed-logtype"><option value="Purchased" ${r.log_type === 'Purchased' ? 'selected' : ''}>Purchased</option><option value="Opening Stock" ${r.log_type === 'Opening Stock' ? 'selected' : ''}>Opening Stock</option></select></td>
+        <td><input type="number" step="0.01" class="ed-litres" value="${r.litres}" style="width:80px"></td>
+        <td>—</td>
+        <td><input type="number" step="0.01" class="ed-cost" value="${r.base_cost}" style="width:90px"></td>
+        <td><input type="number" step="0.01" class="ed-gst" value="${r.gst_percent}" style="width:70px"></td>
+        <td>—</td>
+        <td><input type="number" step="0.01" class="ed-transport" value="${r.transport_cost}" style="width:80px"></td>
+        <td>—</td><td>—</td>
+        <td><input type="text" class="ed-batch" value="${escapeHtml(r.batch_ref || '')}" style="width:90px"></td>
+        <td><input type="text" class="ed-by" value="${escapeHtml(r.prepared_by || '')}" style="width:90px"></td>
+        <td><input type="text" class="ed-notes" value="${escapeHtml(r.cost_notes || '')}" style="width:120px"></td>
+        <td style="white-space:nowrap">
+          <button class="btn secondary save-solution-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Save</button>
+          <button class="btn secondary cancel-row" style="padding:4px 8px;font-size:12px">Cancel</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
       <td>${escapeHtml(r.log_date)}</td>
       <td>${escapeHtml(r.solution_name)}</td>
       <td>${escapeHtml(r.log_type)}</td>
@@ -128,8 +186,167 @@ async function render() {
       <td>${escapeHtml(r.batch_ref || '—')}</td>
       <td>${escapeHtml(r.prepared_by || '—')}</td>
       <td>${escapeHtml(r.cost_notes || '—')}</td>
-    </tr>`).join('')}
-    </tbody></table>`;
+      <td style="white-space:nowrap">
+        ${isPrepared ? '<span class="empty">Delete only—</span><br>' : `<button class="btn secondary edit-solution-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Edit</button>`}
+        <button class="btn danger delete-solution-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  setTimeout(() => wireSolutionsActions(), 0);
+
+  return `<div class="empty" style="margin-bottom:10px">${data.length} entries · total landed spend ₹${totalSpend.toFixed(2)}</div>
+  <p class="empty">Prepared batches can only be deleted, not edited — deleting one automatically reverses its chemical stock deduction. Log a fresh batch instead of editing.</p>
+  <table><thead><tr>
+    <th>Date</th><th>Solution</th><th>Type</th><th>Litres</th><th>Bottles</th><th>Base Cost</th><th>GST %</th><th>GST Amount</th><th>Transport</th><th>Ingredient Cost</th><th>Landed Cost</th><th>Batch</th><th>By</th><th>Notes</th><th></th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function wireSolutionsActions() {
+  const content = document.getElementById('content');
+  content.querySelectorAll('.edit-solution-row').forEach(btn => {
+    btn.addEventListener('click', () => { editingRowId.solutions = btn.dataset.id; render(); });
+  });
+  content.querySelectorAll('.cancel-row').forEach(btn => {
+    btn.addEventListener('click', () => { editingRowId.solutions = null; render(); });
+  });
+  content.querySelectorAll('.delete-solution-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await deleteRow('solutions_log', btn.dataset.id, 'solutions log');
+      if (ok) render();
+    });
+  });
+  content.querySelectorAll('.save-solution-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      const update = {
+        log_date: row.querySelector('.ed-date').value,
+        log_type: row.querySelector('.ed-logtype').value,
+        litres: Number(row.querySelector('.ed-litres').value),
+        cost_amount: Number(row.querySelector('.ed-cost').value),
+        gst_percent: Number(row.querySelector('.ed-gst').value),
+        transport_cost: Number(row.querySelector('.ed-transport').value),
+        batch_ref: row.querySelector('.ed-batch').value || null,
+        prepared_by: row.querySelector('.ed-by').value || null,
+        cost_notes: row.querySelector('.ed-notes').value || null,
+      };
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const { error } = await db.from('solutions_log').update(update).eq('id', btn.dataset.id);
+      if (error) { showMsg(document.getElementById('msg'), 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
+      showMsg(document.getElementById('msg'), 'success', 'Entry updated.');
+      editingRowId.solutions = null;
+      render();
+    });
+  });
+}
+
+// ---------------- Returns ----------------
+
+function returnsTable(data) {
+  const rows = data.map(r => {
+    if (editingRowId.returns === r.id) {
+      return `<tr data-id="${r.id}">
+        <td><input type="date" class="ed-date" value="${r.return_date}" style="width:130px"></td>
+        <td>${escapeHtml(r.attendant_name)}</td>
+        <td>${escapeHtml(r.category)}</td>
+        <td>${escapeHtml(r.item_name)}</td>
+        <td><input type="number" step="0.01" class="ed-qty" value="${r.qty_returned}" style="width:80px"></td>
+        <td><select class="ed-condition"><option value="Usable" ${r.condition === 'Usable' ? 'selected' : ''}>Usable</option><option value="Not Usable" ${r.condition === 'Not Usable' ? 'selected' : ''}>Not Usable</option></select></td>
+        <td><input type="text" class="ed-receivedby" value="${escapeHtml(r.returned_to || '')}" style="width:100px"></td>
+        <td><input type="text" class="ed-remarks" value="${escapeHtml(r.remarks || '')}" style="width:120px"></td>
+        <td style="white-space:nowrap">
+          <button class="btn secondary save-return-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Save</button>
+          <button class="btn secondary cancel-row" style="padding:4px 8px;font-size:12px">Cancel</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
+      <td>${escapeHtml(r.return_date)}</td>
+      <td>${escapeHtml(r.attendant_name)}</td>
+      <td>${escapeHtml(r.category)}</td>
+      <td>${escapeHtml(r.item_name)}</td>
+      <td>${r.qty_returned}</td>
+      <td><span class="badge ${r.condition === 'Usable' ? 'ok' : 'reorder'}">${escapeHtml(r.condition)}</span></td>
+      <td>${escapeHtml(r.returned_to || '—')}</td>
+      <td>${escapeHtml(r.remarks || '—')}</td>
+      <td style="white-space:nowrap">
+        <button class="btn secondary edit-return-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Edit</button>
+        <button class="btn danger delete-return-row" data-id="${r.id}" style="padding:4px 8px;font-size:12px">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  setTimeout(() => wireReturnsActions(), 0);
+
+  return `<p class="empty" style="margin-bottom:10px">Changing a Usable/Not Usable status here updates your stock numbers immediately.</p>
+  <table><thead><tr><th>Date</th><th>Employee</th><th>Category</th><th>Item</th><th>Qty</th><th>Condition</th><th>Received By</th><th>Remarks</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function wireReturnsActions() {
+  const content = document.getElementById('content');
+  content.querySelectorAll('.edit-return-row').forEach(btn => {
+    btn.addEventListener('click', () => { editingRowId.returns = btn.dataset.id; render(); });
+  });
+  content.querySelectorAll('.cancel-row').forEach(btn => {
+    btn.addEventListener('click', () => { editingRowId.returns = null; render(); });
+  });
+  content.querySelectorAll('.delete-return-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await deleteRow('returns_log', btn.dataset.id, 'return');
+      if (ok) render();
+    });
+  });
+  content.querySelectorAll('.save-return-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      const update = {
+        return_date: row.querySelector('.ed-date').value,
+        qty_returned: Number(row.querySelector('.ed-qty').value),
+        condition: row.querySelector('.ed-condition').value,
+        returned_to: row.querySelector('.ed-receivedby').value || null,
+        remarks: row.querySelector('.ed-remarks').value || null,
+      };
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const { error } = await db.from('returns_log').update(update).eq('id', btn.dataset.id);
+      if (error) { showMsg(document.getElementById('msg'), 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
+      showMsg(document.getElementById('msg'), 'success', 'Entry updated.');
+      editingRowId.returns = null;
+      render();
+    });
+  });
+}
+
+// ---------------- Router ----------------
+
+async function render() {
+  const content = document.getElementById('content');
+  const msg = document.getElementById('msg');
+  content.innerHTML = '<p class="empty">Loading…</p>';
+  msg.innerHTML = '';
+
+  if (mode === 'materials') {
+    const { data, error } = await db.from('materials_purchase_history').select('*');
+    if (error) { showMsg(content, 'error', error.message); return; }
+    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No purchases logged yet.</p>'; return; }
+    content.innerHTML = materialsOrChemicalsTable(data, 'material_name', 'materials_purchases', 'materials');
+
+  } else if (mode === 'chemicals') {
+    const { data, error } = await db.from('chemical_purchase_history').select('*');
+    if (error) { showMsg(content, 'error', error.message); return; }
+    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No chemical purchases logged yet.</p>'; return; }
+    content.innerHTML = materialsOrChemicalsTable(data, 'chemical_name', 'chemical_purchases', 'chemicals');
+
+  } else if (mode === 'returns') {
+    const { data, error } = await db.from('returns_history').select('*');
+    if (error) { showMsg(content, 'error', error.message); return; }
+    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No returns logged yet.</p>'; return; }
+    content.innerHTML = returnsTable(data);
+
+  } else {
+    const { data, error } = await db.from('solutions_log_history').select('*');
+    if (error) { showMsg(content, 'error', error.message); return; }
+    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No solution entries logged yet.</p>'; return; }
+    content.innerHTML = solutionsTable(data);
   }
 }
 
