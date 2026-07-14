@@ -184,6 +184,19 @@ async function renderPurchase() {
   });
 }
 
+let expandedChemHistoryId = null;
+
+async function renderChemPriceHistory(chemicalId) {
+  const { data, error } = await db.from('chemical_purchase_history').select('*').eq('chemical_id', chemicalId).limit(5);
+  if (error) return `<tr><td colspan="6"><div class="msg error">${escapeHtml(error.message)}</div></td></tr>`;
+  if (!data || data.length === 0) return `<tr><td colspan="6"><p class="empty" style="margin:6px 0">No purchases logged for this chemical yet.</p></td></tr>`;
+  const rows = data.map(r => `<tr><td>${escapeHtml(r.purchase_date)}</td><td>${escapeHtml(r.entry_type)}</td><td>${r.quantity} ${escapeHtml(r.unit)}</td><td>₹${(Number(r.unit_cost)*1000).toFixed(2)}/kg or L</td><td>${escapeHtml(r.supplier || '—')}</td><td>${escapeHtml(r.remarks || '—')}</td></tr>`).join('');
+  return `<tr><td colspan="6" style="padding:0">
+    <table style="margin:6px 0 10px"><thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>Cost</th><th>Supplier</th><th>Notes</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+  </td></tr>`;
+}
+
 async function renderManage() {
   const content = document.getElementById('content');
   const msg = document.getElementById('msg');
@@ -206,8 +219,14 @@ async function renderManage() {
     } else {
       html += `<tr>
         <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.alt_name || '—')}</td><td>${escapeHtml(c.unit)}</td><td>₹${(Number(c.current_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.current_unit_cost).toFixed(4)}/g or ml)</span></td><td>${c.reorder_level}</td>
-        <td><button class="btn secondary edit-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
+        <td style="white-space:nowrap">
+          <button class="btn secondary edit-chem" data-id="${c.id}" style="padding:4px 10px;font-size:12px">Edit</button>
+          <button class="btn secondary toggle-chem-history" data-id="${c.id}" style="padding:4px 10px;font-size:12px">${expandedChemHistoryId === c.id ? 'Hide' : 'Price History'}</button>
+        </td>
       </tr>`;
+      if (expandedChemHistoryId === c.id) {
+        html += `<tr class="chem-history-placeholder" data-id="${c.id}"><td colspan="6"><p class="empty">Loading…</p></td></tr>`;
+      }
     }
   });
   html += `</tbody></table>`;
@@ -225,6 +244,14 @@ async function renderManage() {
 
   content.querySelectorAll('.edit-chem').forEach(btn => btn.addEventListener('click', () => { editingId = btn.dataset.id; renderManage(); }));
   content.querySelectorAll('.cancel-chem').forEach(btn => btn.addEventListener('click', () => { editingId = null; renderManage(); }));
+  content.querySelectorAll('.toggle-chem-history').forEach(btn => btn.addEventListener('click', () => {
+    expandedChemHistoryId = expandedChemHistoryId === btn.dataset.id ? null : btn.dataset.id;
+    renderManage();
+  }));
+  content.querySelectorAll('.chem-history-placeholder').forEach(async (row) => {
+    const html = await renderChemPriceHistory(row.dataset.id);
+    row.outerHTML = html;
+  });
   content.querySelectorAll('.save-chem').forEach(btn => btn.addEventListener('click', async () => {
     const row = btn.closest('tr');
     const name = row.querySelector('.edit-name').value.trim();

@@ -50,52 +50,90 @@ renderNav('items', 'pages');
 const msg = document.getElementById('msg');
 let editingMaterialId = null;
 let editingSolutionId = null;
+let expandedHistoryId = null; // one item's price history open at a time
 
 async function loadTables() {
-  const { data: materials } = await db.from('materials').select('*').order('name');
-  const { data: solutions } = await db.from('solutions').select('*').order('name');
+  const { data: materials } = await db.from('stock_materials').select('*').order('material_name');
+  const { data: solutions } = await db.from('stock_solutions').select('*').order('solution_name');
   renderMaterialsTable(materials || []);
   renderSolutionsTable(solutions || []);
+}
+
+async function renderPriceHistoryRow(itemId, isChemicalStyleMaterial) {
+  const table = isChemicalStyleMaterial ? 'materials_purchase_history' : 'solutions_log_history';
+  const idCol = isChemicalStyleMaterial ? 'material_id' : 'solution_id';
+  const { data, error } = await db.from(table).select('*').eq(idCol, itemId).limit(5);
+  if (error) return `<tr><td colspan="6"><div class="msg error">${escapeHtml(error.message)}</div></td></tr>`;
+  if (!data || data.length === 0) return `<tr><td colspan="6"><p class="empty" style="margin:6px 0">No purchases logged for this item yet.</p></td></tr>`;
+
+  const rows = isChemicalStyleMaterial
+    ? data.map(r => `<tr><td>${escapeHtml(r.purchase_date)}</td><td>${escapeHtml(r.entry_type)}</td><td>${r.quantity}</td><td>₹${Number(r.unit_cost).toFixed(2)}/unit</td><td>${escapeHtml(r.supplier || '—')}</td><td>${escapeHtml(r.remarks || '—')}</td></tr>`).join('')
+    : data.map(r => `<tr><td>${escapeHtml(r.log_date)}</td><td>${escapeHtml(r.log_type)}</td><td>${Number(r.litres).toFixed(2)}L</td><td>₹${Number(r.unit_cost).toFixed(2)}/L</td><td>—</td><td>${escapeHtml(r.cost_notes || '—')}</td></tr>`).join('');
+
+  return `<tr><td colspan="6" style="padding:0">
+    <table style="margin:6px 0 10px"><thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>Cost</th><th>Supplier</th><th>Notes</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+  </td></tr>`;
 }
 
 function renderMaterialsTable(materials) {
   const box = document.getElementById('materials-table');
   if (materials.length === 0) { box.innerHTML = '<p class="empty">No materials yet.</p>'; return; }
 
-  box.innerHTML = `<table><thead><tr><th>Name</th><th>Unit</th><th>Reorder Level</th><th></th></tr></thead><tbody>
-  ${materials.map(m => {
+  box.innerHTML = `<table><thead><tr><th>Name</th><th>Unit</th><th>Current Cost/Unit</th><th>Reorder Level</th><th></th></tr></thead><tbody id="materials-tbody"></tbody></table>`;
+  const tbody = document.getElementById('materials-tbody');
+
+  materials.forEach(m => {
     if (editingMaterialId === m.id) {
-      return `<tr data-id="${m.id}">
-        <td><input type="text" class="edit-name" value="${escapeHtml(m.name)}"></td>
+      tbody.insertAdjacentHTML('beforeend', `<tr data-id="${m.id}">
+        <td><input type="text" class="edit-name" value="${escapeHtml(m.material_name)}"></td>
         <td><input type="text" class="edit-unit" value="${escapeHtml(m.unit)}" style="width:80px"></td>
+        <td><input type="number" step="0.01" class="edit-cost" value="${m.current_unit_cost}" style="width:100px"></td>
         <td><input type="number" class="edit-reorder" value="${m.reorder_level}" style="width:80px"></td>
         <td>
           <button class="btn secondary save-material" data-id="${m.id}" style="padding:4px 10px;font-size:12px">Save</button>
           <button class="btn secondary cancel-material" style="padding:4px 10px;font-size:12px">Cancel</button>
         </td>
-      </tr>`;
+      </tr>`);
+    } else {
+      tbody.insertAdjacentHTML('beforeend', `<tr>
+        <td>${escapeHtml(m.material_name)}</td><td>${escapeHtml(m.unit)}</td><td>₹${Number(m.current_unit_cost).toFixed(2)}</td><td>${m.reorder_level}</td>
+        <td style="white-space:nowrap">
+          <button class="btn secondary edit-material" data-id="${m.id}" style="padding:4px 10px;font-size:12px">Edit</button>
+          <button class="btn secondary toggle-history" data-id="${m.id}" data-kind="material" style="padding:4px 10px;font-size:12px">${expandedHistoryId === m.id ? 'Hide' : 'Price History'}</button>
+        </td>
+      </tr>`);
+      if (expandedHistoryId === m.id) {
+        tbody.insertAdjacentHTML('beforeend', '<tr><td colspan="5"><p class="empty">Loading…</p></td></tr>');
+        renderPriceHistoryRow(m.id, true).then(html => {
+          const placeholder = tbody.lastElementChild;
+          placeholder.outerHTML = html;
+        });
+      }
     }
-    return `<tr>
-      <td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.reorder_level}</td>
-      <td><button class="btn secondary edit-material" data-id="${m.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
-    </tr>`;
-  }).join('')}
-  </tbody></table>`;
+  });
 
   box.querySelectorAll('.edit-material').forEach(btn => {
-    btn.addEventListener('click', () => { editingMaterialId = btn.dataset.id; renderMaterialsTable(materials); });
+    btn.addEventListener('click', () => { editingMaterialId = btn.dataset.id; loadTables(); });
   });
   box.querySelectorAll('.cancel-material').forEach(btn => {
-    btn.addEventListener('click', () => { editingMaterialId = null; renderMaterialsTable(materials); });
+    btn.addEventListener('click', () => { editingMaterialId = null; loadTables(); });
+  });
+  box.querySelectorAll('.toggle-history').forEach(btn => {
+    btn.addEventListener('click', () => {
+      expandedHistoryId = expandedHistoryId === btn.dataset.id ? null : btn.dataset.id;
+      loadTables();
+    });
   });
   box.querySelectorAll('.save-material').forEach(btn => {
     btn.addEventListener('click', async () => {
       const row = btn.closest('tr');
       const name = row.querySelector('.edit-name').value.trim();
       const unit = row.querySelector('.edit-unit').value.trim();
+      const current_unit_cost = Number(row.querySelector('.edit-cost').value);
       const reorder_level = Number(row.querySelector('.edit-reorder').value);
       btn.disabled = true; btn.textContent = 'Saving…';
-      const { error } = await db.from('materials').update({ name, unit, reorder_level }).eq('id', btn.dataset.id);
+      const { error } = await db.from('materials').update({ name, unit, current_unit_cost, reorder_level }).eq('id', btn.dataset.id);
       if (error) { showMsg(msg, 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
       showMsg(msg, 'success', 'Material updated.');
       editingMaterialId = null;
@@ -108,40 +146,60 @@ function renderSolutionsTable(solutions) {
   const box = document.getElementById('solutions-table');
   if (solutions.length === 0) { box.innerHTML = '<p class="empty">No solutions yet.</p>'; return; }
 
-  box.innerHTML = `<table><thead><tr><th>Name</th><th>Bottle Size (ml)</th><th>Reorder Level (L)</th><th></th></tr></thead><tbody>
-  ${solutions.map(s => {
+  box.innerHTML = `<table><thead><tr><th>Name</th><th>Bottle Size (ml)</th><th>Current Cost/L</th><th>Reorder Level (L)</th><th></th></tr></thead><tbody id="solutions-tbody"></tbody></table>`;
+  const tbody = document.getElementById('solutions-tbody');
+
+  solutions.forEach(s => {
     if (editingSolutionId === s.id) {
-      return `<tr data-id="${s.id}">
-        <td><input type="text" class="edit-name" value="${escapeHtml(s.name)}"></td>
+      tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}">
+        <td><input type="text" class="edit-name" value="${escapeHtml(s.solution_name)}"></td>
         <td><input type="number" class="edit-size" value="${s.bottle_size_ml}" style="width:90px"></td>
+        <td><input type="number" step="0.01" class="edit-cost" value="${s.current_cost_per_litre}" style="width:100px"></td>
         <td><input type="number" step="0.5" class="edit-reorder" value="${s.reorder_level_l}" style="width:90px"></td>
         <td>
           <button class="btn secondary save-solution" data-id="${s.id}" style="padding:4px 10px;font-size:12px">Save</button>
           <button class="btn secondary cancel-solution" style="padding:4px 10px;font-size:12px">Cancel</button>
         </td>
-      </tr>`;
+      </tr>`);
+    } else {
+      tbody.insertAdjacentHTML('beforeend', `<tr>
+        <td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml</td><td>₹${Number(s.current_cost_per_litre).toFixed(2)}</td><td>${s.reorder_level_l}</td>
+        <td style="white-space:nowrap">
+          <button class="btn secondary edit-solution" data-id="${s.id}" style="padding:4px 10px;font-size:12px">Edit</button>
+          <button class="btn secondary toggle-history" data-id="${s.id}" data-kind="solution" style="padding:4px 10px;font-size:12px">${expandedHistoryId === s.id ? 'Hide' : 'Price History'}</button>
+        </td>
+      </tr>`);
+      if (expandedHistoryId === s.id) {
+        tbody.insertAdjacentHTML('beforeend', '<tr><td colspan="5"><p class="empty">Loading…</p></td></tr>');
+        renderPriceHistoryRow(s.id, false).then(html => {
+          const placeholder = tbody.lastElementChild;
+          placeholder.outerHTML = html;
+        });
+      }
     }
-    return `<tr>
-      <td>${escapeHtml(s.name)}</td><td>${s.bottle_size_ml}ml</td><td>${s.reorder_level_l}</td>
-      <td><button class="btn secondary edit-solution" data-id="${s.id}" style="padding:4px 10px;font-size:12px">Edit</button></td>
-    </tr>`;
-  }).join('')}
-  </tbody></table>`;
+  });
 
   box.querySelectorAll('.edit-solution').forEach(btn => {
-    btn.addEventListener('click', () => { editingSolutionId = btn.dataset.id; renderSolutionsTable(solutions); });
+    btn.addEventListener('click', () => { editingSolutionId = btn.dataset.id; loadTables(); });
   });
   box.querySelectorAll('.cancel-solution').forEach(btn => {
-    btn.addEventListener('click', () => { editingSolutionId = null; renderSolutionsTable(solutions); });
+    btn.addEventListener('click', () => { editingSolutionId = null; loadTables(); });
+  });
+  box.querySelectorAll('.toggle-history').forEach(btn => {
+    btn.addEventListener('click', () => {
+      expandedHistoryId = expandedHistoryId === btn.dataset.id ? null : btn.dataset.id;
+      loadTables();
+    });
   });
   box.querySelectorAll('.save-solution').forEach(btn => {
     btn.addEventListener('click', async () => {
       const row = btn.closest('tr');
       const name = row.querySelector('.edit-name').value.trim();
       const bottle_size_ml = Number(row.querySelector('.edit-size').value);
+      const current_cost_per_litre = Number(row.querySelector('.edit-cost').value);
       const reorder_level_l = Number(row.querySelector('.edit-reorder').value);
       btn.disabled = true; btn.textContent = 'Saving…';
-      const { error } = await db.from('solutions').update({ name, bottle_size_ml, reorder_level_l }).eq('id', btn.dataset.id);
+      const { error } = await db.from('solutions').update({ name, bottle_size_ml, current_cost_per_litre, reorder_level_l }).eq('id', btn.dataset.id);
       if (error) { showMsg(msg, 'error', error.message); btn.disabled = false; btn.textContent = 'Save'; return; }
       showMsg(msg, 'success', 'Solution updated.');
       editingSolutionId = null;
