@@ -26,6 +26,12 @@
     <button data-mode="solutions">Solutions Log</button>
     <button data-mode="returns">Returns</button>
   </div>
+  <div class="row-actions" style="align-items:flex-end">
+    <label style="max-width:170px">From<input type="date" id="hist-date-from"></label>
+    <label style="max-width:170px">To<input type="date" id="hist-date-to"></label>
+    <button class="btn secondary" id="hist-clear-dates-btn" type="button">Clear Dates</button>
+    <button class="btn secondary" id="hist-download-btn" type="button">Download CSV</button>
+  </div>
   <div id="msg"></div>
   <div id="content"><p class="empty">Loading…</p></div>
 </div>
@@ -318,6 +324,68 @@ function wireReturnsActions() {
 
 // ---------------- Router ----------------
 
+const DATE_COL = { materials: 'purchase_date', chemicals: 'purchase_date', solutions: 'log_date', returns: 'return_date' };
+let currentRows = [];
+
+document.getElementById('hist-date-from').addEventListener('change', render);
+document.getElementById('hist-date-to').addEventListener('change', render);
+document.getElementById('hist-clear-dates-btn').addEventListener('click', () => {
+  document.getElementById('hist-date-from').value = '';
+  document.getElementById('hist-date-to').value = '';
+  render();
+});
+document.getElementById('hist-download-btn').addEventListener('click', downloadCsv);
+
+function applyDateRange(query) {
+  const from = document.getElementById('hist-date-from').value;
+  const to = document.getElementById('hist-date-to').value;
+  const col = DATE_COL[mode];
+  if (from) query = query.gte(col, from);
+  if (to) query = query.lte(col, to);
+  return query;
+}
+
+function csvFilename(prefix) {
+  const from = document.getElementById('hist-date-from').value || 'all';
+  const to = document.getElementById('hist-date-to').value || 'all';
+  return `${prefix}_${from}_to_${to}.csv`;
+}
+
+function escapeCsvVal(val) {
+  return `"${String(val ?? '').replace(/"/g, '""')}"`;
+}
+
+function downloadCsv() {
+  if (currentRows.length === 0) { showMsg(document.getElementById('msg'), 'error', 'Nothing to download for this selection.'); return; }
+
+  let headers, rows, prefix;
+  if (mode === 'materials' || mode === 'chemicals') {
+    const nameKey = mode === 'materials' ? 'material_name' : 'chemical_name';
+    headers = ['Date', 'Item', 'Type', 'Qty', 'Unit', 'Base Cost', 'GST %', 'GST Amount', 'Transport', 'Landed Cost', 'Per Unit', 'Supplier', 'Invoice', 'Remarks'];
+    rows = currentRows.map(r => [r.purchase_date, r[nameKey], r.entry_type, r.quantity, r.unit, r.base_cost, r.gst_percent, r.gst_amount, r.transport_cost, r.total_landed_cost, r.unit_cost, r.supplier || '', r.invoice_ref || '', r.remarks || '']);
+    prefix = mode === 'materials' ? 'materials-purchases' : 'chemicals-purchases';
+  } else if (mode === 'solutions') {
+    headers = ['Date', 'Solution', 'Type', 'Litres', 'Bottles', 'Base Cost', 'GST %', 'GST Amount', 'Transport', 'Ingredient Cost', 'Landed Cost', 'Batch', 'Prepared By', 'Notes'];
+    rows = currentRows.map(r => [r.log_date, r.solution_name, r.log_type, r.litres, r.bottles, r.base_cost, r.gst_percent, r.gst_amount, r.transport_cost, r.ingredient_cost || 0, r.total_landed_cost, r.batch_ref || '', r.prepared_by || '', r.cost_notes || '']);
+    prefix = 'solutions-log';
+  } else {
+    headers = ['Date', 'Employee', 'Category', 'Item', 'Qty', 'Condition', 'Received By', 'Remarks'];
+    rows = currentRows.map(r => [r.return_date, r.attendant_name, r.category, r.item_name, r.qty_returned, r.condition, r.returned_to || '', r.remarks || '']);
+    prefix = 'returns';
+  }
+
+  const lines = [headers.join(','), ...rows.map(row => row.map(escapeCsvVal).join(','))];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = csvFilename(prefix);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 async function render() {
   const content = document.getElementById('content');
   const msg = document.getElementById('msg');
@@ -325,28 +393,32 @@ async function render() {
   msg.innerHTML = '';
 
   if (mode === 'materials') {
-    const { data, error } = await db.from('materials_purchase_history').select('*');
+    const { data, error } = await applyDateRange(db.from('materials_purchase_history').select('*'));
     if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No purchases logged yet.</p>'; return; }
-    content.innerHTML = materialsOrChemicalsTable(data, 'material_name', 'materials_purchases', 'materials');
+    currentRows = data || [];
+    if (currentRows.length === 0) { content.innerHTML = '<p class="empty">No purchases logged for this selection.</p>'; return; }
+    content.innerHTML = materialsOrChemicalsTable(currentRows, 'material_name', 'materials_purchases', 'materials');
 
   } else if (mode === 'chemicals') {
-    const { data, error } = await db.from('chemical_purchase_history').select('*');
+    const { data, error } = await applyDateRange(db.from('chemical_purchase_history').select('*'));
     if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No chemical purchases logged yet.</p>'; return; }
-    content.innerHTML = materialsOrChemicalsTable(data, 'chemical_name', 'chemical_purchases', 'chemicals');
+    currentRows = data || [];
+    if (currentRows.length === 0) { content.innerHTML = '<p class="empty">No chemical purchases logged for this selection.</p>'; return; }
+    content.innerHTML = materialsOrChemicalsTable(currentRows, 'chemical_name', 'chemical_purchases', 'chemicals');
 
   } else if (mode === 'returns') {
-    const { data, error } = await db.from('returns_history').select('*');
+    const { data, error } = await applyDateRange(db.from('returns_history').select('*'));
     if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No returns logged yet.</p>'; return; }
-    content.innerHTML = returnsTable(data);
+    currentRows = data || [];
+    if (currentRows.length === 0) { content.innerHTML = '<p class="empty">No returns logged for this selection.</p>'; return; }
+    content.innerHTML = returnsTable(currentRows);
 
   } else {
-    const { data, error } = await db.from('solutions_log_history').select('*');
+    const { data, error } = await applyDateRange(db.from('solutions_log_history').select('*'));
     if (error) { showMsg(content, 'error', error.message); return; }
-    if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No solution entries logged yet.</p>'; return; }
-    content.innerHTML = solutionsTable(data);
+    currentRows = data || [];
+    if (currentRows.length === 0) { content.innerHTML = '<p class="empty">No solution entries logged for this selection.</p>'; return; }
+    content.innerHTML = solutionsTable(currentRows);
   }
 }
 
