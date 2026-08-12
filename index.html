@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Ecovex Inventory — Stock</title>
+<title>Ecovex Inventory</title>
 <link rel="stylesheet" href="css/style.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/config.js"></script>
@@ -14,72 +14,48 @@
   <header>
     <img src="assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
     <div>
-      <h1><a href="index.html">ECOVEX Inventory</a></h1>
-      <p>Live stock, purchases, kit issuance &amp; employee records</p>
+      <h1>ECOVEX Inventory</h1>
+      <p>Pick a section to get started</p>
     </div>
   </header>
-  <nav id="nav"></nav>
-  <div id="content"><p class="empty">Loading stock…</p></div>
+
+  <div class="hub-grid">
+    <a class="hub-card" href="pages/material.html">
+      <span class="hub-icon">🧰</span>
+      <h2>Material</h2>
+      <p>Cleaning materials & prepared solutions — purchase, manage items, issue kits, returns, kit templates, employees, and history.</p>
+      <span class="hub-count" id="material-count">Loading…</span>
+    </a>
+    <a class="hub-card" href="pages/manufacturing.html">
+      <span class="hub-icon">🧪</span>
+      <h2>Manufacturing</h2>
+      <p>Raw chemical stock and the formulas you prepare in-house — plus what you can produce right now with what's on hand.</p>
+      <span class="hub-count" id="manufacturing-count">Loading…</span>
+    </a>
+  </div>
 </div>
 
 <script>
-renderNav('stock', 'root');
-
-async function loadStock() {
-  const content = document.getElementById('content');
-  const [{ data: materials, error: e1 }, { data: solutions, error: e2 }, { data: chemicals, error: e3 }] = await Promise.all([
-    db.from('stock_materials').select('*').order('material_name'),
-    db.from('stock_solutions').select('*').order('solution_name'),
-    db.from('chemical_stock').select('*'),
+async function loadCounts() {
+  const [{ data: materials }, { data: solutions }, { data: chemicals }] = await Promise.all([
+    db.from('stock_materials').select('status'),
+    db.from('stock_solutions').select('status'),
+    db.from('chemical_stock').select('status'),
   ]);
 
-  if (e1 || e2) {
-    showMsg(content, 'error', (e1 || e2).message);
-    return;
-  }
+  const materialReorder = (materials || []).filter(m => m.status === 'Reorder').length
+    + (solutions || []).filter(s => s.status === 'Reorder').length;
+  const chemReorder = (chemicals || []).filter(c => c.status === 'Reorder').length;
 
-  const reorderCount = materials.filter(m => m.status === 'Reorder').length + solutions.filter(s => s.status === 'Reorder').length + (chemicals || []).filter(c => c.status === 'Reorder').length;
+  const mEl = document.getElementById('material-count');
+  mEl.textContent = materialReorder > 0 ? `⚠ ${materialReorder} item${materialReorder > 1 ? 's' : ''} need reorder` : '✔ Stock levels OK';
+  mEl.className = 'hub-count ' + (materialReorder > 0 ? 'reorder' : 'ok');
 
-  let html = '';
-  if (reorderCount > 0) {
-    html += `<div class="msg error">⚠ ${reorderCount} item${reorderCount > 1 ? 's' : ''} at or below reorder level</div>`;
-  }
-  if (materials.length === 0 && solutions.length === 0) {
-    html += `<p class="empty">No items yet. Add some under <a href="pages/items.html">Manage Items</a>.</p>`;
-  }
-
-  html += `<div class="section-title">Materials Stock</div>
-  <table><thead><tr><th>Item</th><th>Unit</th><th>Purchased</th><th>Issued</th><th>Available</th><th>Current Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
-  materials.forEach(m => {
-    html += `<tr><td>${escapeHtml(m.material_name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.total_purchased}</td><td>${m.total_issued}</td><td>${m.available_stock}</td><td>₹${Number(m.current_unit_cost).toFixed(2)}</td><td>${m.reorder_level}</td>
-    <td><span class="badge ${m.status === 'OK' ? 'ok' : 'reorder'}">${m.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
-  });
-  html += `</tbody></table>`;
-
-  html += `<div class="section-title">Solutions Stock (Litres)</div>
-  <table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Available (Bottles)</th><th>Current Cost/L</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
-  solutions.forEach(s => {
-    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${s.available_bottles != null ? Number(s.available_bottles).toFixed(1) : '—'}</td><td>₹${Number(s.current_cost_per_litre).toFixed(2)}</td><td>${s.reorder_level_l}</td>
-    <td><span class="badge ${s.status === 'OK' ? 'ok' : 'reorder'}">${s.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
-  });
-  html += `</tbody></table>`;
-
-  html += `<div class="section-title">Chemicals Stock (raw ingredients)</div>`;
-  if (!chemicals || chemicals.length === 0) {
-    html += `<p class="empty">No chemicals yet. Add some under <a href="pages/chemicals.html">Chemicals</a>.</p>`;
-  } else {
-    html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Available</th><th>Cost per kg/L</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
-    chemicals.forEach(c => {
-      html += `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.unit)}</td><td>${Number(c.available_qty).toFixed(2)}</td><td>₹${(Number(c.avg_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.avg_unit_cost).toFixed(4)}/g or ml)</span></td><td>${c.reorder_level}</td>
-      <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
-    });
-    html += `</tbody></table>`;
-  }
-
-  content.innerHTML = html;
+  const cEl = document.getElementById('manufacturing-count');
+  cEl.textContent = chemReorder > 0 ? `⚠ ${chemReorder} chemical${chemReorder > 1 ? 's' : ''} need reorder` : '✔ Stock levels OK';
+  cEl.className = 'hub-count ' + (chemReorder > 0 ? 'reorder' : 'ok');
 }
-
-loadStock();
+loadCounts();
 </script>
 </body>
 </html>

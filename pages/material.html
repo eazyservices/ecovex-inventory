@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Material Stock</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
+    <div>
+      <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+      <p>Live stock — materials & prepared solutions</p>
+    </div>
+  </header>
+  <nav id="nav"></nav>
+  <div id="content"><p class="empty">Loading stock…</p></div>
+</div>
+
+<script>
+renderNav('material-stock', 'pages', 'material');
+
+async function loadStock() {
+  const content = document.getElementById('content');
+  const [{ data: materials, error: e1 }, { data: solutions, error: e2 }] = await Promise.all([
+    db.from('stock_materials').select('*').order('material_name'),
+    db.from('stock_solutions').select('*').order('solution_name'),
+  ]);
+
+  if (e1 || e2) {
+    showMsg(content, 'error', (e1 || e2).message);
+    return;
+  }
+
+  const reorderCount = materials.filter(m => m.status === 'Reorder').length + solutions.filter(s => s.status === 'Reorder').length;
+
+  let html = '';
+  if (reorderCount > 0) {
+    html += `<div class="msg error">⚠ ${reorderCount} item${reorderCount > 1 ? 's' : ''} at or below reorder level</div>`;
+  }
+  if (materials.length === 0 && solutions.length === 0) {
+    html += `<p class="empty">No items yet. Add some under <a href="items.html">Manage Items</a>.</p>`;
+  }
+
+  html += `<div class="section-title">Materials Stock</div>
+  <table><thead><tr><th>Item</th><th>Unit</th><th>Purchased</th><th>Issued</th><th>Available</th><th>Current Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
+  materials.forEach(m => {
+    html += `<tr><td>${escapeHtml(m.material_name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.total_purchased}</td><td>${m.total_issued}</td><td>${m.available_stock}</td><td>₹${Number(m.current_unit_cost).toFixed(2)}</td><td>${m.reorder_level}</td>
+    <td><span class="badge ${m.status === 'OK' ? 'ok' : 'reorder'}">${m.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
+  });
+  html += `</tbody></table>`;
+
+  html += `<div class="section-title">Solutions Stock (Litres)</div>
+  <table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Available (Bottles)</th><th>Current Cost/L</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
+  solutions.forEach(s => {
+    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${s.available_bottles != null ? Number(s.available_bottles).toFixed(1) : '—'}</td><td>₹${Number(s.current_cost_per_litre).toFixed(2)}</td><td>${s.reorder_level_l}</td>
+    <td><span class="badge ${s.status === 'OK' ? 'ok' : 'reorder'}">${s.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
+  });
+  html += `</tbody></table>`;
+
+  content.innerHTML = html;
+}
+
+loadStock();
+</script>
+</body>
+</html>

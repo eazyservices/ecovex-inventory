@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ecovex Microfiber Cleaner — Master Batch Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0B2036;
+  --navy-2:#12304D;
+  --paper:#F8F5EE;
+  --paper-2:#F1ECE0;
+  --ink:#1D1A14;
+  --ink-soft:#5B564A;
+  --gold:#B78A2E;
+  --gold-soft:#E3CE9C;
+  --sage:#3F6656;
+  --sage-soft:#DCE7DF;
+  --rust:#9B3A26;
+  --rust-soft:#F3DDD5;
+  --line:#DCD5C4;
+  --mono:'IBM Plex Mono',monospace;
+  --serif:'Fraunces',serif;
+  --sans:'Manrope',sans-serif;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:920px;margin:0 auto;padding:0 20px 80px;}
+
+/* ---------- HEADER ---------- */
+header.top{
+  background:var(--navy);
+  color:var(--paper);
+  padding:36px 20px 0;
+  position:relative;
+}
+.top-inner{max-width:920px;margin:0 auto;}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--gold-soft);
+  margin:0 0 10px;
+}
+h1{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:clamp(28px,4vw,42px);
+  margin:0 0 6px;
+  letter-spacing:-0.01em;
+}
+.subtitle{
+  color:#C7D2DC;
+  font-size:15px;
+  margin:0 0 28px;
+  max-width:560px;
+}
+
+/* ---------- QUANTITY SELECTOR (cylinder marks) ---------- */
+.selector{
+  display:flex;
+  gap:10px;
+  padding-bottom:0;
+}
+.qty-btn{
+  flex:1;
+  position:relative;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.16);
+  border-bottom:none;
+  border-radius:8px 8px 0 0;
+  color:#C7D2DC;
+  font-family:var(--mono);
+  font-size:14px;
+  padding:14px 8px 30px;
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+  text-align:center;
+}
+.qty-btn .n{display:block;font-size:22px;font-weight:600;color:#fff;}
+.qty-btn .u{display:block;font-size:11px;letter-spacing:.08em;opacity:.7;margin-top:2px;}
+.qty-btn:hover{background:rgba(255,255,255,0.08);}
+.qty-btn.active{
+  background:var(--paper);
+  color:var(--navy);
+  border-color:var(--paper);
+}
+.qty-btn.active .n{color:var(--navy);}
+.qty-btn.active .u{color:var(--ink-soft);}
+.fill-mark{
+  position:absolute;
+  left:14px;right:14px;bottom:10px;
+  height:4px;
+  border-radius:2px;
+  background:rgba(255,255,255,0.15);
+  overflow:hidden;
+}
+.fill-mark i{
+  display:block;height:100%;
+  background:var(--gold);
+  width:var(--fill,20%);
+}
+.qty-btn.active .fill-mark{background:rgba(11,32,54,0.12);}
+.qty-btn.active .fill-mark i{background:var(--navy);}
+
+/* ---------- AT A GLANCE STRIP ---------- */
+.glance{
+  background:var(--paper);
+  border-bottom:1px solid var(--line);
+  padding:18px 20px 20px;
+}
+.glance-inner{
+  max-width:920px;margin:0 auto;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+}
+.glance-item{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:12px 14px;
+}
+.glance-item .label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:4px;}
+.glance-item .value{font-family:var(--mono);font-size:17px;font-weight:600;color:var(--navy);}
+.glance-item .value small{font-family:var(--sans);font-weight:500;font-size:12px;color:var(--ink-soft);}
+
+@media (max-width:640px){
+  .glance-inner{grid-template-columns:repeat(2,1fr);}
+}
+
+/* ---------- SECTIONS ---------- */
+main{padding-top:32px;}
+section{margin-bottom:44px;}
+.sec-head{
+  display:flex;align-items:baseline;gap:10px;
+  margin-bottom:14px;
+  border-bottom:2px solid var(--navy);
+  padding-bottom:8px;
+}
+.sec-num{font-family:var(--mono);color:var(--gold);font-size:13px;font-weight:600;}
+h2{
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:600;
+  margin:0;
+  color:var(--navy);
+}
+.sec-note{font-size:13px;color:var(--ink-soft);margin:-6px 0 16px;}
+
+table{width:100%;border-collapse:collapse;font-size:14px;}
+th{
+  text-align:left;
+  font-family:var(--mono);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--ink-soft);
+  padding:8px 10px;
+  border-bottom:1px solid var(--navy);
+}
+td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.amt{font-family:var(--mono);font-weight:600;color:var(--navy);white-space:nowrap;}
+.opt-tag{
+  display:inline-block;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--sage);
+  background:var(--sage-soft);
+  padding:2px 6px;
+  border-radius:4px;
+  margin-left:6px;
+  letter-spacing:.03em;
+}
+
+/* equipment */
+.eq-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.eq-grid table{margin:0;}
+@media (max-width:700px){.eq-grid{grid-template-columns:1fr;}}
+
+/* steps */
+.steps{display:flex;flex-direction:column;gap:0;}
+.step{
+  display:grid;
+  grid-template-columns:40px 1fr;
+  gap:14px;
+  padding:14px 0;
+  border-bottom:1px solid var(--line);
+}
+.step:last-child{border-bottom:none;}
+.step-num{
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:600;
+  color:var(--gold-soft);
+  -webkit-text-stroke:1px var(--gold);
+  color:transparent;
+}
+.step-body p{margin:0 0 6px;font-size:14.5px;}
+.step-meta{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);}
+.step-meta b{color:var(--navy);}
+.target-chip{
+  display:inline-block;
+  font-family:var(--mono);
+  font-size:11px;
+  background:var(--paper-2);
+  border:1px solid var(--line);
+  color:var(--ink-soft);
+  padding:2px 8px;
+  border-radius:20px;
+}
+
+/* dosage cards */
+.dose-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media (max-width:700px){.dose-grid{grid-template-columns:1fr;}}
+.dose-card{
+  background:#fff;border:1px solid var(--line);border-radius:10px;
+  padding:16px;
+}
+.dose-card h3{font-family:var(--serif);font-size:16px;margin:0 0 6px;color:var(--navy);}
+.dose-card .big{font-family:var(--mono);font-size:20px;font-weight:600;color:var(--gold);margin-bottom:4px;}
+.dose-card p{font-size:12.5px;color:var(--ink-soft);margin:0;}
+
+/* troubleshooting */
+.trouble-row{display:grid;grid-template-columns:1fr 1.4fr;gap:16px;padding:12px 0;border-bottom:1px solid var(--line);}
+.trouble-row:last-child{border-bottom:none;}
+.trouble-row .prob{font-size:13.5px;font-weight:600;color:var(--rust);}
+.trouble-row .sol{font-size:13.5px;color:var(--ink);}
+
+/* safety / cleaning compact */
+.compact-list{margin:0;padding-left:0;list-style:none;font-size:13.5px;}
+.compact-list li{
+  padding:8px 0 8px 20px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+.compact-list li:last-child{border-bottom:none;}
+.compact-list li:before{
+  content:"—";
+  position:absolute;left:0;top:8px;
+  color:var(--gold);
+  font-weight:700;
+}
+.warn-box{
+  background:var(--rust-soft);
+  border:1px solid #E0BBAE;
+  border-radius:10px;
+  padding:14px 16px;
+  font-size:13px;
+  color:#5E2314;
+  margin-top:14px;
+}
+.warn-box b{color:var(--rust);}
+
+details{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px;}
+details summary{cursor:pointer;font-family:var(--mono);font-size:12.5px;color:var(--navy);font-weight:600;}
+details[open] summary{margin-bottom:10px;}
+details p, details li{font-size:13px;color:var(--ink-soft);}
+
+footer{
+  text-align:center;
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-soft);
+  padding-top:20px;
+  border-top:1px solid var(--line);
+}
+</style>
+</head>
+<body>
+
+<div class="wrap" style="padding-bottom:0">
+  <div style="padding:14px 0 0"><a href="../formulas.html" style="font-family:var(--mono);font-size:12px;color:var(--ink-soft);text-decoration:none;">← Back to Formulas</a></div>
+</div>
+
+<header class="top">
+  <div class="top-inner">
+    <p class="eyebrow">Ecovex · Eazy Services — Rev 5.0</p>
+    <h1>Microfiber Cleaner<br>Master Batch Manual</h1>
+    <p class="subtitle">One formula, four batch sizes. Pick a volume — every quantity, timing, and dosage figure on this page recalculates to match.</p>
+    <div class="selector" id="selector">
+      <button class="qty-btn" data-l="1"><span class="n">1</span><span class="u">LITRE</span><span class="fill-mark" style="--fill:20%"><i></i></span></button>
+      <button class="qty-btn" data-l="2"><span class="n">2</span><span class="u">LITRES</span><span class="fill-mark" style="--fill:40%"><i></i></span></button>
+      <button class="qty-btn" data-l="3"><span class="n">3</span><span class="u">LITRES</span><span class="fill-mark" style="--fill:60%"><i></i></span></button>
+      <button class="qty-btn active" data-l="5"><span class="n">5</span><span class="u">LITRES</span><span class="fill-mark" style="--fill:100%"><i></i></span></button>
+    </div>
+  </div>
+</header>
+
+<div class="glance">
+  <div class="glance-inner">
+    <div class="glance-item"><div class="label">Batch yield</div><div class="value" id="g-yield">—</div></div>
+    <div class="glance-item"><div class="label">Active prep time</div><div class="value" id="g-active">—</div></div>
+    <div class="glance-item"><div class="label">Mandatory hold</div><div class="value">24 <small>hours</small></div></div>
+    <div class="glance-item"><div class="label">Vessel size needed</div><div class="value" id="g-vessel">—</div></div>
+  </div>
+</div>
+
+<div class="wrap">
+<main>
+
+  <section id="sec-ingredients">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Ingredients</h2></div>
+    <p class="sec-note">All-in-one concentrate — works identically for hand wash, top-load, and front-load microfiber cleaning.</p>
+    <table>
+      <thead><tr><th>Ingredient</th><th>Quantity</th><th>Purpose</th></tr></thead>
+      <tbody id="ing-body"></tbody>
+    </table>
+
+    <details>
+      <summary>No EDTA on hand? DIY sodium citrate fallback</summary>
+      <p>React citric acid with baking soda separately, then add the clear solution in place of EDTA at Step 2. Weigh these two as a separate portion from the pH-trim citric acid in the main table above — don't merge the piles.</p>
+      <table>
+        <thead><tr><th>Item</th><th>Quantity</th></tr></thead>
+        <tbody id="diy-body"></tbody>
+      </table>
+      <p>Dissolve the baking soda in the water first (wide bowl — foams up), then stir in citric acid slowly; it will fizz hard. Let it sit 5–10 min until fizzing fully stops before adding to the batch.</p>
+    </details>
+  </section>
+
+  <section id="sec-equipment">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Equipment</h2></div>
+    <table>
+      <tbody>
+        <tr><td>Mixing vessel</td><td class="amt" id="eq-vessel">—</td><td>Food-grade plastic (HDPE/PP) or stainless steel, wide-mouthed</td></tr>
+        <tr><td>Digital weighing scale</td><td class="amt">0.1 g</td><td>For EDTA, citric acid, preservatives, salt</td></tr>
+        <tr><td>Measuring cylinders</td><td class="amt">100 / 500 / 1000 ml</td><td>For SLES, CAPB, IPA, glycerin, brine</td></tr>
+        <tr><td>Thermometer</td><td class="amt">—</td><td>Water warming and monitoring</td></tr>
+        <tr><td>Flat-blade paddle</td><td class="amt">—</td><td>Stir only — never whisk or blend (see Step 10 note)</td></tr>
+        <tr><td>pH strips or meter</td><td class="amt">6.5–7.5</td><td>Target range</td></tr>
+        <tr><td>Clear test bottle</td><td class="amt">250–500 ml</td><td>24-hour hold-back sample</td></tr>
+        <tr><td>Storage bottles</td><td class="amt" id="eq-bottles">—</td><td>Dark PET or glass, wide pour spout</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="sec-procedure">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Step-by-Step Procedure</h2></div>
+    <p class="sec-note">Stir with a flat paddle only, slow and one direction — a blender, mixer, or whisk whips in air, ruins the pour test, and can leave the batch stringy.</p>
+    <div class="steps" id="steps-body"></div>
+  </section>
+
+  <section id="sec-dosage">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Dosage &amp; Usage</h2></div>
+    <p class="sec-note">Per-use dosage is fixed regardless of batch size — only the number of uses per batch changes.</p>
+    <div class="dose-grid" id="dose-body"></div>
+  </section>
+
+  <section id="sec-judge">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Judging "Semi-Gel"</h2></div>
+    <table>
+      <thead><tr><th>Test</th><th>Too thin</th><th>Target</th><th>Too thick</th></tr></thead>
+      <tbody>
+        <tr><td>Tilt-jug pour</td><td>Thin, watery stream</td><td>Steady, slightly heavy ribbon — like dish wash liquid</td><td>Clings to wall / slow drips</td></tr>
+        <tr><td>Spoon drizzle</td><td>Falls off instantly, no thread</td><td>Smooth ribbon, folds back briefly, then levels</td><td>Stiff peak or thread, doesn't level</td></tr>
+        <tr><td>Dissolve check<br><span style="color:var(--ink-soft);font-size:12px">1 tsp in 500 ml water</span></td><td>Disperses instantly</td><td>Disperses in 3–5 sec, no streaks</td><td>Use pour/spoon tests instead</td></tr>
+      </tbody>
+    </table>
+    <div class="warn-box"><b>If it overshoots:</b> never add more salt to fix over-thickening. Add plain distilled water 10 ml at a time and stir gently to walk it back down.</div>
+  </section>
+
+  <section id="sec-trouble">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Troubleshooting</h2></div>
+    <div id="trouble-body">
+      <div class="trouble-row"><div class="prob">Won't thicken past a thin liquid</div><div class="sol">Confirm SLES/CAPB are at full quantity and that the chelator (EDTA or DIY citrate) fully dissolved with no clumps — the salt curve only structures with enough surfactant and no undissolved solids.</div></div>
+      <div class="trouble-row"><div class="prob">Thickened, then suddenly went thin and cloudy</div><div class="sol">Past the salt-curve peak — can't be fixed by adding more salt. Start a fresh test batch and titrate slower, checking every 20–25 ml instead of larger jumps.</div></div>
+      <div class="trouble-row"><div class="prob">Thicker cold, thinner warm</div><div class="sol">Normal, mildly temperature-sensitive. Shake or warm slightly before pouring — not separation.</div></div>
+      <div class="trouble-row"><div class="prob">Grainy specks after adding brine</div><div class="sol">Salt wasn't fully dissolved before adding. Always pre-dissolve as a 10% brine, never add dry crystals directly.</div></div>
+      <div class="trouble-row"><div class="prob">Pours fine but feels stringy</div><div class="sol">Stirring was too vigorous (whisking/blending) during thickening. Redo with slow, gentle paddle stirring only.</div></div>
+      <div class="trouble-row"><div class="prob">Batch fizzed after adding chelator</div><div class="sol">Only relevant on the DIY citrate route — the CO₂ reaction wasn't finished before adding to the batch. Let it settle 5–10 min fully next time.</div></div>
+    </div>
+  </section>
+
+  <section id="sec-storage">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Storage, Cleaning &amp; Safety</h2></div>
+    <ul class="compact-list">
+      <li>Shelf life: 12–18 months in a dark, wide-spout PET or glass bottle, stored below 25°C, out of direct sun.</li>
+      <li>If stiffer than usual after cold storage, shake or stir gently before use — normal, not a failure.</li>
+      <li>Always dispense with a dry pump or spoon; never pour used wash water back into the bottle.</li>
+      <li>Rinse jars and utensils immediately after use — SLES/CAPB dry into a sticky film once set.</li>
+      <li>For mineral scale on glass, soak 5–10 min in warm water with a splash of white vinegar, then scrub.</li>
+      <li>Final rinse with distilled/RO water, especially for anything used near pH testing.</li>
+      <li>Keep this equipment dedicated to this formula line — never let it cross over with anything that touched bleach.</li>
+    </ul>
+    <div class="warn-box">
+      <b>Safety:</b> Isopropyl alcohol is flammable — mix in a ventilated area, away from open flames. Do not mix with bleach under any circumstances. Do not ingest; rinse thoroughly on skin/eye contact. Formulated for synthetic microfiber only — not for cotton, wool, or silk. Keep out of reach of children and pets.
+    </div>
+  </section>
+
+</main>
+
+<footer>ECOVEX · EAZY SERVICES — INTERNAL MANUFACTURING REFERENCE — REV 5.0</footer>
+</div>
+
+<script>
+// ---------- Base per-litre reference values (derived from the 5L formula ÷ 5) ----------
+const base = {
+  startWaterFrac: 0.66,
+  slesA: 60,        // ml/L, SLES 70%
+  slesB: 150,       // ml/L, SLES 28% alt
+  capb: 40,         // ml/L
+  edtaLo: 2.0, edtaHi: 2.4,   // g/L
+  citricTrim: 5,    // g/L
+  ipa: 62.2,        // ml/L (90% stock)
+  glycerin: 15,     // ml/L
+  poly20: 5,         // ml/L
+  teaLo: 10, teaHi: 15, // drops/L
+  benzoate: 1,      // g/L
+  sorbate: 1,       // g/L
+  saltStart: 6,     // g/L
+  saltMaxLo: 15, saltMaxHi: 20, // g/L
+  diyCitric: 11.2,  // g/L
+  diyBaking: 14.6,  // g/L
+  diyWater: 40      // ml/L
+};
+
+function r(n, step=1){ return Math.round(n/step)*step; }
+function fmt(n){ return (Math.round(n*10)/10).toLocaleString('en-IN'); }
+
+function render(L){
+  const total = L*1000;
+  const startWater = r(total*base.startWaterFrac, 25);
+
+  // ---- Ingredients table ----
+  const rows = [
+    ['Distilled / RO Water', `~${fmt(startWater)} ml to start, topped up to exactly ${fmt(total)} ml`, 'Base solvent'],
+    ['SLES 70%', `${fmt(base.slesA*L)} ml <span class="opt-tag">or ${fmt(base.slesB*L)} ml if 28% strength</span>`, 'Primary surfactant'],
+    ['Cocamidopropyl Betaine (CAPB)', `${fmt(base.capb*L)} ml`, 'Co-surfactant — mildness, foam, salt curve'],
+    ['Disodium EDTA', `${fmt(base.edtaLo*L)}–${fmt(base.edtaHi*L)} g`, 'Chelator — locks up hardness minerals'],
+    ['Citric Acid (pH trim)', `${fmt(base.citricTrim*L)} g`, 'Mild acidity, pH correction'],
+    ['Isopropyl Alcohol 90%', `${fmt(base.ipa*L)} ml`, 'Degreasing, fast drying, preservative boost'],
+    ['Vegetable Glycerin', `${fmt(base.glycerin*L)} ml`, 'Softness, anti-static'],
+    ['Polysorbate 20', `${fmt(base.poly20*L)} ml`, 'Solubiliser — premix with tea tree oil'],
+    ['Tea Tree Oil <span class="opt-tag">optional</span>', `${fmt(base.teaLo*L)}–${fmt(base.teaHi*L)} drops`, 'Antibacterial, scent'],
+    ['Sodium Benzoate', `${fmt(base.benzoate*L)} g`, 'Preservative'],
+    ['Potassium Sorbate', `${fmt(base.sorbate*L)} g`, 'Preservative'],
+    ['Sodium Chloride (fine salt)', `Start ${fmt(base.saltStart*L)} g · max ${fmt(base.saltMaxLo*L)}–${fmt(base.saltMaxHi*L)} g, as a 10% brine`, 'Electrolyte thickener']
+  ];
+  document.getElementById('ing-body').innerHTML = rows.map(x=>
+    `<tr><td>${x[0]}</td><td class="amt">${x[1]}</td><td>${x[2]}</td></tr>`).join('');
+
+  document.getElementById('diy-body').innerHTML = `
+    <tr><td>Citric Acid</td><td class="amt">${fmt(base.diyCitric*L)} g</td></tr>
+    <tr><td>Baking Soda</td><td class="amt">${fmt(base.diyBaking*L)} g</td></tr>
+    <tr><td>Warm water (to dissolve)</td><td class="amt">~${fmt(base.diyWater*L)} ml</td></tr>`;
+
+  // ---- Glance strip ----
+  const loadsTopLo = Math.floor(total/70), loadsTopHi = Math.floor(total/60);
+  document.getElementById('g-yield').innerHTML = `${fmt(total)} <small>ml total</small>`;
+  document.getElementById('g-active').innerHTML = L<=2 ? `~30–40 <small>min</small>` : `~40–55 <small>min</small>`;
+  const vesselSize = Math.ceil((total*1.3)/100)/10;
+  document.getElementById('g-vessel').innerHTML = `${fmt(vesselSize)} L <small>+ capacity</small>`;
+  document.getElementById('eq-vessel').textContent = `${fmt(vesselSize)} L+ capacity, wide-mouthed`;
+  document.getElementById('eq-bottles').textContent = L===1 ? '1 × 1 L bottle' : `${L} × 1 L, or one ${L} L container`;
+
+  // ---- Steps ----
+  const brineMaxSalt = base.saltMaxHi*L;
+  const brineWater = r(brineMaxSalt*10, 10);
+  const saltMark = r(total*0.9, 10);
+  const steps = [
+    ['Warm the water', `Warm ~${fmt(startWater)} ml distilled water to ~40°C in the mixing vessel.`, 'Paddle + thermometer', '3 min', '10–15 min', '40°C'],
+    ['Dissolve the chelator', `Fully dissolve ${fmt(base.edtaLo*L)}–${fmt(base.edtaHi*L)} g EDTA (or the DIY citrate solution) before anything else goes in.`, 'Paddle', '3–4 min', '2 min', 'Clear'],
+    ['Dissolve pH-trim citric acid', `Fully dissolve ${fmt(base.citricTrim*L)} g citric acid.`, 'Paddle', '2–3 min', '1 min', 'Clear'],
+    ['Add SLES', `Slowly add ${fmt(base.slesA*L)} ml SLES 70% down the vessel wall, stir gently one direction.`, 'Paddle', '4–5 min', '2 min', 'Uniform'],
+    ['Add CAPB', `Add ${fmt(base.capb*L)} ml CAPB, stir gently.`, 'Paddle', '3 min', '1 min', 'Uniform'],
+    ['Add glycerin', `Add ${fmt(base.glycerin*L)} ml glycerin, stir.`, 'Paddle', '2 min', '—', 'Uniform'],
+    ['Add tea tree premix', `Pre-mix tea tree oil with ${fmt(base.poly20*L)} ml Polysorbate 20 in a small cup, then add to batch.`, 'Cup + paddle', '2 + 2 min', '—', 'No floating oil'],
+    ['Add preservatives', `Dissolve ${fmt(base.benzoate*L)} g Sodium Benzoate + ${fmt(base.sorbate*L)} g Potassium Sorbate in ~${fmt(75*L/5)} ml warm water, then add.`, 'Cup + paddle', '3 + 1 min', '2 min', 'Dissolved'],
+    ['Add IPA', `Add ${fmt(base.ipa*L)} ml IPA 90%, pouring slowly while stirring gently.`, 'Paddle', '3–4 min', '2 min', 'Uniform'],
+    ['Salt-curve titration', `Prep a 10% brine (up to ${fmt(brineMaxSalt)} g salt in ~${fmt(brineWater)} ml warm water). At ~${fmt(saltMark)} ml batch volume, add brine 20–25 ml at a time, stirring 1 full min per addition.`, 'Paddle + brine jug', '1 min/addition', '1–2 min pause', 'Semi-gel'],
+    ['Pour test', `Run the pour test after every brine addition. Stop as soon as target consistency is reached.`, 'Test spoon/jug', '<1 min/check', '—', 'Ribbon flow'],
+    ['Top up to volume', `Top up remaining distilled water to exactly ${fmt(total)} ml, stir gently to fold in.`, 'Paddle', '3 min', '—', `${fmt(total)} ml`],
+    ['Check pH', `Adjust with a pinch of citric acid or baking soda if needed.`, 'pH strips', '2 min', '2 min', '6.5–7.5'],
+    ['Hold-back sample', `Pour a 250–500 ml sample into a clear bottle; hold before bottling the full batch.`, 'Clear test bottle', '2 min', '24 hours', 'No separation'],
+    ['Bottle & label', `Bottle the full batch into dark, wide-spout containers; label with date and revision.`, 'Funnel + bottles', '10–15 min', '—', 'Sealed, labelled']
+  ];
+  document.getElementById('steps-body').innerHTML = steps.map((s,i)=>`
+    <div class="step">
+      <div class="step-num">${i+1}</div>
+      <div class="step-body">
+        <p><strong>${s[0]}.</strong> ${s[1]}</p>
+        <div class="step-meta"><span><b>Tool:</b> ${s[2]}</span><span><b>Active:</b> ${s[3]}</span><span><b>Idle:</b> ${s[4]}</span><span class="target-chip">Target: ${s[5]}</span></div>
+      </div>
+    </div>`).join('');
+
+  // ---- Dosage cards ----
+  const tl = [Math.floor(total/70), Math.floor(total/60)];
+  const fl = [Math.floor(total/50), Math.floor(total/40)];
+  const hw = [Math.floor(total/30), Math.floor(total/25)];
+  document.getElementById('dose-body').innerHTML = `
+    <div class="dose-card"><h3>Top-Load Machine</h3><div class="big">60–70 ml / load</div><p>${tl[0]}–${tl[1]} loads from this batch. Add to drum or dispenser, cold–warm water, max 40°C, gentle cycle.</p></div>
+    <div class="dose-card"><h3>Front-Load Machine</h3><div class="big">40–50 ml / load</div><p>${fl[0]}–${fl[1]} loads from this batch. Pour into detergent drawer, delicate cycle, max 40°C.</p></div>
+    <div class="dose-card"><h3>Hand Wash</h3><div class="big">25–30 ml / 1 L water</div><p>${hw[0]}–${hw[1]} washes from this batch. Soak 10–15 min, rinse under clean cold water.</p></div>`;
+
+  // ---- Selector state ----
+  document.querySelectorAll('.qty-btn').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.l)===L);
+  });
+}
+
+document.getElementById('selector').addEventListener('click', e=>{
+  const btn = e.target.closest('.qty-btn');
+  if(!btn) return;
+  render(Number(btn.dataset.l));
+});
+
+render(5);
+</script>
+</body>
+</html>

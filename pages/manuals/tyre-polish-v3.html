@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ecovex Tyre Polish Concentrate V3 — Master Manufacturing File</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-950:#0a1220;
+    --navy-900:#0f1b2e;
+    --navy-800:#16253c;
+    --navy-700:#20334d;
+    --navy-600:#2c4463;
+    --paper:#f6f3ec;
+    --paper-dim:#eae5d8;
+    --gold:#c9a24a;
+    --gold-bright:#e0bd68;
+    --ink:#1c1a15;
+    --ink-soft:#5a5648;
+    --line:#d9d2bf;
+    --danger:#a4432c;
+    --danger-bg:#f6e8e2;
+    --ok:#3f6a4c;
+    --ok-bg:#e7efe6;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Manrope',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--gold);color:var(--navy-950);}
+
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* ---------- HEADER ---------- */
+  header.masthead{
+    background:
+      radial-gradient(ellipse 900px 400px at 15% -10%, rgba(201,162,74,0.16), transparent 60%),
+      var(--navy-950);
+    color:var(--paper);
+    padding:52px 28px 40px;
+    position:relative;
+    overflow:hidden;
+    border-bottom:3px solid var(--gold);
+  }
+  header.masthead::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: repeating-linear-gradient(90deg, rgba(201,162,74,0.055) 0px, rgba(201,162,74,0.055) 1px, transparent 1px, transparent 64px);
+    pointer-events:none;
+  }
+  .masthead-inner{max-width:1040px;margin:0 auto;position:relative;}
+  .eyebrow-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;letter-spacing:0.16em;text-transform:uppercase;
+    color:var(--gold-bright);
+    border:1px solid rgba(224,189,104,0.4);
+    padding:4px 10px;border-radius:2px;
+  }
+  .eyebrow.status{color:#a9c9ae;border-color:rgba(169,201,174,0.35);}
+  h1.title{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(30px,4.4vw,50px);
+    line-height:1.04;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  h1.title em{font-style:italic;color:var(--gold-bright);font-weight:500;}
+  .subtitle{
+    color:#b9c2d1;font-size:15px;max-width:620px;margin-top:10px;
+  }
+  .meta-strip{
+    display:flex;flex-wrap:wrap;gap:22px;margin-top:26px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8ea0bd;
+  }
+  .meta-strip span b{color:var(--paper);font-weight:500;}
+
+  /* ---------- BATCH SELECTOR (signature element) ---------- */
+  .selector-dock{
+    max-width:1040px;margin:-30px auto 0;padding:0 28px;position:relative;z-index:5;
+  }
+  .selector-card{
+    background:var(--navy-900);
+    border:1px solid var(--navy-600);
+    border-radius:6px;
+    padding:20px 22px;
+    box-shadow:0 18px 40px -18px rgba(0,0,0,0.55);
+    display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+  }
+  .selector-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;
+    text-transform:uppercase;color:#8ea0bd;white-space:nowrap;
+  }
+  .dial{display:flex;gap:6px;background:var(--navy-950);padding:5px;border-radius:5px;border:1px solid var(--navy-700);}
+  .dial button{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;font-weight:600;
+    background:transparent;border:none;color:#8ea0bd;
+    padding:10px 20px;border-radius:3px;cursor:pointer;
+    transition:all .18s ease;
+    position:relative;
+  }
+  .dial button:hover{color:var(--paper);}
+  .dial button.active{
+    background:linear-gradient(180deg,var(--gold-bright),var(--gold));
+    color:var(--navy-950);
+    box-shadow:0 3px 10px -3px rgba(201,162,74,0.6);
+  }
+  .dial button .unit{font-size:10px;opacity:0.75;margin-left:1px;}
+  .selector-readout{
+    margin-left:auto;text-align:right;
+    font-family:'IBM Plex Mono',monospace;color:#8ea0bd;font-size:12px;
+  }
+  .selector-readout b{
+    display:block;color:var(--gold-bright);font-size:20px;font-weight:600;
+  }
+
+  /* ---------- LAYOUT ---------- */
+  main{max-width:1040px;margin:0 auto;padding:38px 28px 90px;}
+  section{margin-bottom:46px;}
+  h2.section-head{
+    font-family:'Fraunces',serif;font-weight:600;font-size:22px;
+    display:flex;align-items:baseline;gap:12px;margin:0 0 18px;
+    color:var(--navy-900);
+  }
+  h2.section-head .num{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);
+    border:1px solid var(--gold);border-radius:20px;padding:2px 9px;
+  }
+  .section-note{font-size:13.5px;color:var(--ink-soft);margin:-10px 0 18px;max-width:680px;}
+
+  /* stat grid */
+  .stat-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+    gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:4px;overflow:hidden;
+  }
+  .stat{background:#fff;padding:14px 16px;}
+  .stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:5px;}
+  .stat .v{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px;color:var(--navy-900);}
+  .stat .v small{font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:2px;}
+
+  /* phase blocks */
+  .phase{
+    border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-bottom:16px;
+    background:#fff;
+  }
+  .phase-head{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--navy-900);color:var(--paper);
+    padding:11px 18px;
+  }
+  .phase-head .name{font-family:'Fraunces',serif;font-weight:600;font-size:16px;}
+  .phase-head .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold-bright);}
+  table.formula{width:100%;border-collapse:collapse;font-size:14px;}
+  table.formula th{
+    text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);
+    padding:9px 18px;border-bottom:1px solid var(--line);background:var(--paper-dim);
+  }
+  table.formula td{padding:10px 18px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.formula tr:last-child td{border-bottom:none;}
+  table.formula td.amt{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--navy-900);white-space:nowrap;}
+  table.formula td.role{color:var(--ink-soft);font-size:12.5px;}
+  table.formula td.note{color:var(--ink-soft);font-size:12px;font-style:italic;}
+  .phase-instructions{
+    padding:14px 18px 16px;background:#fcfaf5;border-top:1px dashed var(--line);
+  }
+  .phase-instructions ol{margin:0;padding-left:20px;}
+  .phase-instructions li{margin-bottom:7px;font-size:13.5px;}
+  .phase-instructions li:last-child{margin-bottom:0;}
+  .phase-instructions .val{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--navy-800);background:var(--paper-dim);padding:1px 5px;border-radius:3px;}
+  .phase-time{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold-bright);
+  }
+  .critical-flag{
+    display:inline-block;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;
+    color:var(--danger);background:var(--danger-bg);border:1px solid rgba(164,67,44,0.25);
+    padding:6px 10px;border-radius:3px;
+  }
+
+  /* totals row */
+  .totals-row{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--navy-900);color:var(--paper);padding:14px 18px;border-radius:5px;margin-top:4px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .totals-row .label{font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#8ea0bd;}
+  .totals-row .value{font-size:20px;font-weight:600;color:var(--gold-bright);}
+
+  /* QC table */
+  table.qc{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+  table.qc th{
+    text-align:left;background:var(--navy-900);color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;
+    padding:10px 14px;
+  }
+  table.qc td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.qc tr:last-child td{border-bottom:none;}
+  table.qc td.param{font-weight:700;color:var(--navy-900);}
+  table.qc td.range{font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+  table.qc td.fix{color:var(--danger);font-size:12.5px;}
+
+  /* costing */
+  table.cost{width:100%;border-collapse:collapse;font-size:14px;background:#fff;border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+  table.cost th{
+    text-align:left;padding:10px 16px;background:var(--paper-dim);
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);
+    border-bottom:1px solid var(--line);
+  }
+  table.cost td{padding:9px 16px;border-bottom:1px solid var(--line);}
+  table.cost tr.grand td{
+    font-weight:700;background:var(--navy-950);color:var(--gold-bright);
+    font-family:'IBM Plex Mono',monospace;font-size:15px;border-bottom:none;
+  }
+  table.cost td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+
+  footer{
+    max-width:1040px;margin:0 auto;padding:0 28px 60px;
+    font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:18px;
+  }
+
+  @media (max-width:640px){
+    .selector-card{flex-direction:column;align-items:stretch;}
+    .selector-readout{margin-left:0;text-align:left;}
+    table.formula, table.qc, table.cost{font-size:12.5px;}
+    table.formula td, table.formula th{padding:8px 10px;}
+  }
+</style>
+</head>
+<body>
+
+<div style="max-width:1040px;margin:14px auto 0;padding:0 28px;">
+  <a href="../formulas.html" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);text-decoration:none;">← Back to Formulas</a>
+</div>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="eyebrow-row">
+      <span class="eyebrow">Ecovex · Confidential &amp; Proprietary</span>
+      <span class="eyebrow status">Rev 3.0 · Validated</span>
+    </div>
+    <h1 class="title">Tyre Polish Concentrate <em>V3</em></h1>
+    <div class="subtitle">Master manufacturing file. Pick a batch size below — the formula, mixing procedure, timing and cost recalculate for that quantity. Base formula validated per-litre; all batch sizes are exact multiples.</div>
+    <div class="meta-strip">
+      <span>Dilution <b>1 : 3</b></span>
+      <span>pH target <b>5.8 – 6.2</b></span>
+      <span>Shelf life <b>12 months</b></span>
+      <span>Gloss <b>3–4 days, 9.5/10</b></span>
+      <span>Rated to <b>45°C ambient</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="selector-dock">
+  <div class="selector-card">
+    <span class="selector-label">Batch size</span>
+    <div class="dial" id="dial">
+      <button data-l="1">1<span class="unit">L</span></button>
+      <button data-l="2">2<span class="unit">L</span></button>
+      <button data-l="3" class="active">3<span class="unit">L</span></button>
+      <button data-l="5">5<span class="unit">L</span></button>
+    </div>
+    <div class="selector-readout">Batch weight<b id="readoutWeight">3,000 g</b></div>
+  </div>
+</div>
+
+<main>
+
+  <section>
+    <h2 class="section-head"><span class="num">01</span>Batch overview</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="k">Batch weight</div><div class="v" id="statWeight">3,000<small>g</small></div></div>
+      <div class="stat"><div class="k">Prep time</div><div class="v" id="statTime">70–90<small>min</small></div></div>
+      <div class="stat"><div class="k">Vessel size</div><div class="v" id="statVessel">4–5<small>L</small></div></div>
+      <div class="stat"><div class="k">Bottles yield</div><div class="v" id="statBottles">3<small>× 1L opaque HDPE</small></div></div>
+      <div class="stat"><div class="k">Active silicone</div><div class="v">9.5<small>% RTU</small></div></div>
+      <div class="stat"><div class="k">Est. cost</div><div class="v" id="statCost">₹551<small>total</small></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-head"><span class="num">02</span>Equipment checklist</h2>
+    <div class="section-note" id="equipNote">Scale to the vessel and bottle count above. No homogeniser required — a 500W+ blender is sufficient at every batch size. No dedicated paddle needed either — see the stirring tool row below.</div>
+    <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));">
+      <div class="stat"><div class="k">Scale</div><div class="v" style="font-size:13px;">±0.1 g digital, 5 kg cap.</div></div>
+      <div class="stat"><div class="k">Mixing vessel</div><div class="v" style="font-size:13px;" id="equipVessel">4–5 L SS / HDPE</div></div>
+      <div class="stat"><div class="k">Blender</div><div class="v" style="font-size:13px;">500W+, variable speed</div></div>
+      <div class="stat"><div class="k">Stirring tool</div><div class="v" style="font-size:13px;">Hand whisk — slow fold, not whipped (see note below)</div></div>
+      <div class="stat"><div class="k">pH meter</div><div class="v" style="font-size:13px;">Calibrated, ±0.05 — non-negotiable</div></div>
+      <div class="stat"><div class="k">Water bath</div><div class="v" style="font-size:13px;">Reaches 45°C</div></div>
+      <div class="stat"><div class="k">Bottles</div><div class="v" style="font-size:13px;" id="equipBottles">3× 1L opaque HDPE, pump/flip-top</div></div>
+    </div>
+    <p class="section-note" style="margin-top:14px;"><b>No paddle on hand — use a whisk + blender:</b> a paddle is just a low-shear stirring tool for the "gentle/low speed" steps (EDTA dissolve, IPA, preservatives, dye, fragrance, final top-up). A hand whisk covers these fine — fold slowly, don't whip air in. "Medium speed" steps (XG sprinkle-in, emulsifier blend pour-in) use the blender on a low setting. "High/maximum speed" steps (Phase B's 5-minute mix, Phase D's critical 8-minute blend) need the blender at full speed — nothing substitutes for these, they're what actually builds the emulsion. If hand-whisking introduces foam, rest the batch a few extra minutes before the next addition to let bubbles settle.</p>
+  </section>
+
+  <section id="formulaSection">
+    <h2 class="section-head"><span class="num">03</span>Formula &amp; procedure</h2>
+    <div class="section-note">Every gram scales exactly from the validated 1 L formula. Weigh on a calibrated scale — do not substitute ingredients without re-validating the 12-month stability claim.</div>
+    <div id="phaseContainer"></div>
+    <div class="totals-row">
+      <span class="label">Total batch weight</span>
+      <span class="value" id="totalsWeight">3,000 g</span>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-head"><span class="num">04</span>Silicone Emulsion — active % adjustment</h2>
+    <div class="section-note">This formula is dosed on a 60% active Silicone Emulsion (250 g/L → 150 g active). Real drums run 55–60% active per COA. Dose to a fixed <b>active weight</b>, not a fixed raw weight, so gloss and rain-resistance stay consistent batch to batch.</div>
+    <table class="qc">
+      <tr><th>COA active %</th><th>Silicone Emulsion needed (per litre)</th><th>Adjust RO top-up (per litre)</th></tr>
+      <tr><td class="param">60%</td><td class="range">250.0 g (no change)</td><td class="fix">40.5 g (unchanged)</td></tr>
+      <tr><td class="param">58%</td><td class="range">258.6 g</td><td class="fix">31.9 g</td></tr>
+      <tr><td class="param">56%</td><td class="range">267.9 g</td><td class="fix">22.6 g</td></tr>
+      <tr><td class="param">55%</td><td class="range">272.7 g</td><td class="fix">17.8 g</td></tr>
+    </table>
+    <p class="section-note" style="margin-top:14px;">Formula: <b>Adjusted g = 150 ÷ (active% ÷ 100)</b>. Add the difference above 250 g to the Silicone Emulsion, and subtract that same amount from the Phase E RO Water top-up so total batch weight stays exact. For 2 L / 3 L / 5 L batches, scale the 150 g target and the table values by the batch size.</p>
+  </section>
+
+  <section>
+    <h2 class="section-head"><span class="num">05</span>Quality control &amp; troubleshooting</h2>
+    <div class="section-note">Run every check on every batch, regardless of size. Fail on pH or stability = do not release.</div>
+    <table class="qc">
+      <tr><th>Parameter</th><th>Acceptable range</th><th>If it fails</th></tr>
+      <tr><td class="param">pH</td><td class="range">5.8 – 6.2</td><td class="fix">Above 6.2 → add citric acid dropwise. Below 5.8 → add 10% NaOH dropwise.</td></tr>
+      <tr><td class="param">Appearance</td><td class="range">Smooth, opaque white–pale cream gel</td><td class="fix">Lumps → XG not hydrated. Continue stirring 10 min.</td></tr>
+      <tr><td class="param">Batch weight</td><td class="range">Target ± 0.5%</td><td class="fix">Top up with RO water and record the variance in the batch log.</td></tr>
+      <tr><td class="param">Viscosity</td><td class="range">Thick coat on spoon, flows slowly on tilt</td><td class="fix">Too thin → XG under-hydrated. Rest 20 min, retest.</td></tr>
+      <tr><td class="param">Oil layer</td><td class="range">None after 30 min rest</td><td class="fix">Oil layer → emulsification insufficient. Re-blend Phase D, 8 more minutes.</td></tr>
+      <tr><td class="param">Dye uniformity</td><td class="range">Uniform, no streaks</td><td class="fix">Streaks → dye added before pH was confirmed. Mix 5 min more.</td></tr>
+      <tr><td class="param">Gloss test (RTU)</td><td class="range">Shiny, even black, no streaking on sidewall</td><td class="fix">Streaky → check dimethicone level and Phase D emulsification.</td></tr>
+      <tr><td class="param">4-week stability</td><td class="range">No separation, pH drift &lt;0.3, no colour shift</td><td class="fix">Separation → emulsifier ratio issue. Add lecithin (5 g/L), re-blend.</td></tr>
+    </table>
+    <p class="section-note" style="margin-top:14px;">Before the first commercial run at any batch size: fill two extra bottles, age one at 40–45°C and one at 5°C for 4 weeks, then re-check pH, appearance, viscosity and gloss. Release only if both pass.</p>
+  </section>
+
+  <section>
+    <h2 class="section-head"><span class="num">06</span>Batch costing</h2>
+    <div class="section-note">Indian market, 2026 small-quantity rates. Bulk procurement (25 kg+) cuts raw material cost 20–35%.</div>
+    <table class="cost">
+      <tr><th>Component</th><th style="text-align:right;">Cost</th></tr>
+      <tr><td>Raw materials<br><span style="font-size:11px;color:var(--ink-soft);font-style:italic;">excludes fragrance oil — add your supplier's per-kg rate once finalised</span></td><td class="num" id="costRaw">₹380.58</td></tr>
+      <tr><td>Packaging (opaque HDPE + pump + label)</td><td class="num" id="costPack">₹105.00</td></tr>
+      <tr><td>Overheads / utilities / labour</td><td class="num" id="costOverhead">₹66.00</td></tr>
+      <tr class="grand"><td>Total production cost</td><td class="num" id="costTotal">₹551.58</td></tr>
+      <tr><td>Cost per litre</td><td class="num" id="costPerLitre">₹183.86</td></tr>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  Ecovex Tyre Polish Concentrate V3 · Rev 3.0 · April 2026 · Confidential &amp; Proprietary — internal manufacturing use only. Formula, procedure and QC content sourced from the validated 1 L batch; all sizes shown are exact linear scalings.
+</footer>
+
+<script>
+// ---- Per-litre base formula (validated) ----
+const PHASES = [
+  {
+    name: "Phase A — Chelated water base",
+    tag: "Room temp",
+    time: "5 min",
+    items: [
+      { name:"RO Water", per:430.0, role:"Base", note:"RO mandatory — tap water crashes the emulsion." },
+      { name:"Disodium EDTA", per:2.0, role:"Chelator", note:"Add FIRST. Sequesters metal ions, protects XG & silicone." },
+    ],
+    steps: [
+      "Tare the mixing vessel to zero on the scale.",
+      "Add <span class='val' data-i='0'></span> RO water.",
+      "Add <span class='val' data-i='1'></span> Disodium EDTA. Stir gently 2 minutes until fully dissolved — this must go in first."
+    ]
+  },
+  {
+    name: "Phase B — Xanthan Gum rheology",
+    tag: "25–30 min incl. rest",
+    time: "25–30 min",
+    items: [
+      { name:"Xanthan Gum", per:4.0, role:"Gellant / rheology", note:"Thermally stable 5–60°C — safe at Hyderabad summer temps." },
+      { name:"IPA (99%)", per:30.0, role:"Co-solvent", note:"Add only after XG is fully hydrated." },
+    ],
+    steps: [
+      "With the vessel stirring on medium speed, sprinkle <span class='val' data-i='0'></span> Xanthan Gum slowly over 90 seconds. Do not dump it in.",
+      "Increase to high speed, mix continuously for 5 minutes — the liquid thickens progressively.",
+      "Cover and rest 20 minutes. The XG gel fully develops here — do not skip this rest.",
+      "Add <span class='val' data-i='1'></span> IPA. Stir on medium speed for 2 minutes."
+    ]
+  },
+  {
+    name: "Phase C — 3-component emulsifier system",
+    tag: "Warm to 45°C",
+    time: "10 min",
+    items: [
+      { name:"PEG-40 Hydrogenated Castor Oil", per:40.0, role:"Primary emulsifier, HLB14", note:"Emulsifier : active ratio = 1:3 (industrial standard)." },
+      { name:"Polysorbate 80", per:35.0, role:"Co-emulsifier, HLB15", note:"Do not exceed 4% of total batch — thins the gel body." },
+      { name:"Lecithin (soya, liquid)", per:20.0, role:"Phospholipid anchor", note:"Self-assembles around silicone droplets — no homogeniser needed." },
+    ],
+    steps: [
+      "In a separate beaker combine <span class='val' data-i='0'></span> PEG-40 Hydrogenated Castor Oil, <span class='val' data-i='1'></span> Polysorbate 80 and <span class='val' data-i='2'></span> Lecithin.",
+      "Warm the beaker in a hot water bath to 45°C while stirring, until it forms one slightly hazy liquid. Do not exceed 55°C.",
+      "With the main vessel stirring on medium speed, pour the warm emulsifier blend in slowly over 90 seconds. Continue mixing 4 minutes."
+    ]
+  },
+  {
+    name: "Phase D — Silicone backbone",
+    tag: "Most critical phase",
+    time: "20 min",
+    items: [
+      { name:"Silicone Emulsion (60% active)", per:250.0, role:"Film backbone", note:"RTU active from this source ≈ 6.25%. Real drums run 55–60% active — see §04 for the adjusted weight and top-up water." },
+      { name:"Amino Silicone Emulsion (40–50%)", per:100.0, role:"Rubber-bonding anchor", note:"Do not reduce — this bonds to the rubber surface for rain resistance." },
+      { name:"Dimethicone (100–350 cSt)", per:30.0, role:"Film levelling", note:"Governs streak-free finish." },
+    ],
+    steps: [
+      "At medium-high speed, pour <span class='val' data-i='0'></span> Silicone Emulsion (60%) in a slow stream over 3 minutes.",
+      "Without stopping, pour <span class='val' data-i='1'></span> Amino Silicone Emulsion over 3 minutes.",
+      "Without stopping, trickle in <span class='val' data-i='2'></span> Dimethicone over 1–2 minutes.",
+      "Run the blender at <b>maximum speed for a full 8 minutes</b> — set a timer, don't cut it short.",
+      "Check: smooth, uniform, opaque white, no floating oil. If either fault is present, blend 5 more minutes."
+    ]
+  },
+  {
+    name: "Phase E — Preservation, pH & fill",
+    tag: "Batch must be below 35°C",
+    time: "15 min",
+    items: [
+      { name:"Phenoxyethanol (99%)", per:8.0, role:"Preservative", note:"Add cool — hot addition reduces long-term efficacy." },
+      { name:"Potassium Sorbate", per:3.0, role:"Anti-mould (2nd preservative)", note:"Active below pH 6.5 — covers the mould gap for the 12-month shelf life." },
+      { name:"Citric Acid (50% solution)", per:5.0, role:"pH anchor", note:"Add last, dropwise, to hit target pH." },
+      { name:"Colour Dye (water-soluble)", per:0.5, role:"Brand identity", note:"Add only after pH is confirmed." },
+      { name:"Fragrance Oil (Lemon or Tea Tree)", per:2.0, role:"Fragrance", note:"0.2% dose. Solubilises in the existing PEG-40/Polysorbate emulsifier system — no pre-blend needed. Add after pH is confirmed." },
+      { name:"RO Water (top-up)", per:40.5, role:"Balance to target weight", note:"Add last — top up to the exact batch weight." },
+    ],
+    steps: [
+      "Confirm the batch is below 35°C. At Hyderabad ambient temps, wait it out before proceeding — do not rush this.",
+      "Add <span class='val' data-i='0'></span> Phenoxyethanol. Stir gently, low speed, 2 minutes.",
+      "Add <span class='val' data-i='1'></span> Potassium Sorbate. Stir 2 minutes until dissolved.",
+      "Add <span class='val' data-i='3'></span> colour dye. Stir 2 minutes until uniform.",
+      "Prepare citric acid: dissolve food-grade citric acid in an equal weight of RO water for a 50% solution.",
+      "Check pH and log the reading. Add the citric acid solution dropwise (1–2 g at a time), stirring 1 minute after each addition. Target 5.8–6.2 — stop at 6.0, never go below 5.8.",
+      "Add <span class='val' data-i='4'></span> Fragrance Oil (Lemon or Tea Tree). Stir on medium speed for 2 minutes until fully dispersed. Check for haze or a floating oil sheen — if present, blend 3 more minutes before proceeding.",
+      "Once pH is confirmed, top up with <span class='val' data-i='5'></span> RO water to hit the exact total batch weight. Final slow stir, 3 minutes.",
+      "Fill into opaque HDPE bottles. Label product, batch number, manufacture date, best-before (12 months), dilution 1:3.",
+      "Store upright, cool, dry, away from direct sunlight — AC room or shaded area in Hyderabad summer."
+    ]
+  }
+];
+
+const COST_RATES = { // ₹ per gram, per-litre base amounts above
+  raw: 126.86, // ₹/L raw material (matches source doc's ₹380.58 / 3)
+};
+const PACK_PER_L = 35.00;
+const OVERHEAD_PER_L = 22.00;
+
+const TIME_BY_L = { 1: "55–70", 2: "65–80", 3: "70–90", 5: "90–115" };
+const VESSEL_BY_L = { 1: "2 L", 2: "3–4 L", 3: "4–5 L", 5: "7–8 L" };
+
+function fmt(n){
+  // trims trailing .0
+  let r = Math.round(n * 10) / 10;
+  return (r % 1 === 0) ? r.toString() : r.toFixed(1);
+}
+function fmtWeight(n){
+  return Math.round(n).toLocaleString('en-IN');
+}
+function fmtMoney(n){
+  return "₹" + n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function render(L){
+  document.querySelectorAll('#dial button').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.l) === L);
+  });
+
+  let totalWeight = 0;
+  const container = document.getElementById('phaseContainer');
+  container.innerHTML = '';
+
+  PHASES.forEach((phase, pIdx) => {
+    const scaled = phase.items.map(it => it.per * L);
+    scaled.forEach(v => totalWeight += v);
+
+    const phaseEl = document.createElement('div');
+    phaseEl.className = 'phase';
+
+    let rows = phase.items.map((it, i) => `
+      <tr>
+        <td>${it.name}</td>
+        <td class="amt">${fmt(scaled[i])} g</td>
+        <td class="role">${it.role}</td>
+        <td class="note">${it.note}</td>
+      </tr>
+    `).join('');
+
+    let stepsHtml = phase.steps.map(s => `<li>${s}</li>`).join('');
+
+    phaseEl.innerHTML = `
+      <div class="phase-head">
+        <span class="name">${phase.name}</span>
+        <span class="tag">${phase.tag}</span>
+      </div>
+      <table class="formula">
+        <tr><th>Ingredient</th><th>Amount</th><th>Role</th><th>Note</th></tr>
+        ${rows}
+      </table>
+      <div class="phase-instructions">
+        <div class="phase-time">⏱ ~${phase.time}</div>
+        <ol>${stepsHtml}</ol>
+        ${pIdx===3 ? '<div class="critical-flag">Do not shorten the 8-minute maximum-speed blend — this is the step most likely to cause an oil-out or streaky finish if rushed.</div>' : ''}
+      </div>
+    `;
+
+    // fill in the val spans with correct scaled numbers
+    phaseEl.querySelectorAll('.val').forEach(span=>{
+      const i = Number(span.dataset.i);
+      span.textContent = fmt(scaled[i]) + " g";
+    });
+
+    container.appendChild(phaseEl);
+  });
+
+  document.getElementById('totalsWeight').textContent = fmtWeight(totalWeight) + " g";
+  document.getElementById('readoutWeight').textContent = fmtWeight(totalWeight) + " g";
+  document.getElementById('statWeight').innerHTML = fmtWeight(totalWeight) + "<small>g</small>";
+  document.getElementById('statTime').innerHTML = TIME_BY_L[L] + "<small>min</small>";
+  document.getElementById('statVessel').innerHTML = VESSEL_BY_L[L] + "<small>vessel</small>";
+
+  const bottles = L; // 1L opaque HDPE bottles
+  document.getElementById('statBottles').innerHTML = bottles + "<small>× 1L opaque HDPE</small>";
+  document.getElementById('equipBottles').textContent = bottles + "× 1L opaque HDPE, pump/flip-top";
+  document.getElementById('equipVessel').textContent = VESSEL_BY_L[L] + " SS / HDPE";
+
+  // costing
+  const raw = COST_RATES.raw * L;
+  const pack = PACK_PER_L * L;
+  const overhead = OVERHEAD_PER_L * L;
+  const total = raw + pack + overhead;
+  const perLitre = total / L;
+
+  document.getElementById('costRaw').textContent = fmtMoney(raw);
+  document.getElementById('costPack').textContent = fmtMoney(pack);
+  document.getElementById('costOverhead').textContent = fmtMoney(overhead);
+  document.getElementById('costTotal').textContent = fmtMoney(total);
+  document.getElementById('costPerLitre').textContent = fmtMoney(perLitre);
+  document.getElementById('statCost').innerHTML = "₹" + Math.round(total) + "<small>total</small>";
+}
+
+document.getElementById('dial').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  render(Number(btn.dataset.l));
+});
+
+render(3);
+</script>
+
+</body>
+</html>

@@ -151,3 +151,36 @@ button.btn.danger { background: var(--amber-tint); color: var(--amber); }
 .card-box { border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; background: var(--card); }
 .inline-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; }
 .inline-form label { min-width: 140px; }
+
+/* ---------- landing page hub cards ---------- */
+.hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 26px; }
+@media (max-width: 640px) { .hub-grid { grid-template-columns: 1fr; } }
+.hub-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 30px 26px;
+  transition: border-color .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+.hub-card:hover { border-color: var(--forest); transform: translateY(-2px); box-shadow: 0 8px 20px -12px rgba(15, 107, 71, 0.35); }
+.hub-card .hub-icon { font-size: 34px; margin-bottom: 12px; display: block; }
+.hub-card h2 { margin: 0 0 6px; font-size: 20px; color: var(--ink); }
+.hub-card p { margin: 0 0 16px; color: var(--slate); font-size: 13.5px; line-height: 1.5; }
+.hub-card .hub-count { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+.hub-card .hub-count.ok { background: var(--forest-tint); color: var(--forest-dark); }
+.hub-card .hub-count.reorder { background: var(--amber-tint); color: var(--amber); }
+
+/* ---------- nav group switcher ---------- */
+.nav-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+.tab.switcher.active { color: #fff; background: var(--forest-dark); }
+
+/* ---------- production capacity / shopping list ---------- */
+.capacity-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.capacity-row:last-child { border-bottom: none; }
+.capacity-row .cap-name { font-weight: 700; }
+.capacity-row .cap-sub { color: var(--slate); font-size: 12.5px; }
+.capacity-row .cap-value { font-family: inherit; font-weight: 700; font-size: 16px; color: var(--forest-dark); text-align: right; white-space: nowrap; }
+.capacity-row .cap-bottleneck { font-size: 12px; color: var(--slate); text-align: right; }

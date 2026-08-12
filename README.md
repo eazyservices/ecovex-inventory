@@ -20,10 +20,21 @@ schema.sql, migration_v2.sql, migration_v3.sql, migration_v4.sql → run in this
 Only `index.html` and `js/config.js`/`js/shared.js` are referenced with plain relative paths (`css/style.css`, `js/config.js`) since they sit at the root. Every file inside `pages/` reaches back up with `../` (e.g. `../css/style.css`). If you rename or move folders, those paths need to match.
 
 ## Setup
-1. **Supabase** — run `schema.sql`, then `migration_v2.sql` through `migration_v8.sql`, in order, in the SQL Editor.
+1. **Supabase** — run `schema.sql`, then every `Sql/migration_v2.sql` through `Sql/migration_v10.sql` in order, then root `migration_v11.sql`, then root `Sql/migration_v12.sql`, all in the SQL Editor.
 2. **GitHub** — upload the whole folder structure (keep `js/`, `css/`, `pages/`, `assets/` as real folders, not flattened).
 3. **Vercel** — import the repo, framework preset **Other**, deploy. No env vars needed (Supabase URL/key live in `js/config.js`).
 4. **Logo** — drop your logo file into `assets/` as `logo.png`.
+
+## migration_v12 — Material / Manufacturing split, production planner, two new SOPs
+- **Two-section home page.** `index.html` is now just two cards — 🧰 **Material** and 🧪 **Manufacturing** — each with a live reorder-alert count. Every page's nav bar is now scoped to one of those two groups (with a switcher pill pair to jump between them), instead of one long flat list.
+  - Material: Stock ([pages/material.html](pages/material.html)), Log Purchase, Manage Items, Issue Kit, Returns, Kit Templates, Employees, History.
+  - Manufacturing: Stock ([pages/manufacturing.html](pages/manufacturing.html)), Chemicals, Formulas, History (History appears in both since it already covers all four log types via subtabs).
+- **Two new validated formulas**, each linked to its full manufacturing manual (kept as standalone reference pages under `pages/manuals/`, with a "📄 View Full SOP" link from Formulas):
+  - **Tyre Polish — V3 (Rev 3.0)** — replaces the old V4.1 formula (archived, not deleted, still visible in Formulas marked inactive).
+  - **Microfiber Cleaner — Master Batch (Rev 5.0)** — first formula for the existing Microfiber Cleaner solution.
+  - Seven new chemicals were added for ingredients with a genuinely different spec than anything already tracked (IPA 90% vs the existing 99%, Vegetable Glycerin, SLES 70%, Sodium Chloride, Tea Tree Oil, Citric Acid 50% solution, Fragrance Oil). All start at 0 opening stock — log real purchases under Chemicals once you have them.
+- **Production Capacity panel** (on the Manufacturing dashboard) — for every active formula, shows the max litres producible *right now* from current chemical stock, and which chemical is the bottleneck (the one that'll run out first). Backed by the new `formula_max_producible` view.
+- **Shopping List builder** (same page) — pick one or more formulas and a target quantity for each, and it shows one merged list of which chemicals you're short on and roughly what it'll cost to top up — the procurement-planning feature.
 
 ## migration_v8 — bug fix + editable chemical price
 - **Fixes a real bug**: logging a Prepared solution with a formula selected failed with `column cs.chemical_id does not exist`. That was a mistake in the v7 trigger SQL — fixed now.

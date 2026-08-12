@@ -51,7 +51,7 @@
 </div>
 
 <script>
-renderNav('formulas', 'pages');
+renderNav('formulas', 'pages', 'manufacturing');
 const msg = document.getElementById('msg');
 let chemicals = [];
 let expandedFormulaIds = new Set();
@@ -131,6 +131,7 @@ async function loadFormulas() {
           ${f.notes ? `<div class="empty">${escapeHtml(f.notes)}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px">
+          ${f.manual_url ? `<a class="btn secondary" href="${escapeHtml(f.manual_url)}" target="_blank" style="text-decoration:none;display:inline-block">📄 View Full SOP</a>` : ''}
           <button class="btn secondary toggle-ingredients" data-id="${f.id}" type="button">${isExpanded ? 'Hide Ingredients' : `View Ingredients (${fIngredients.length})`}</button>
           <button class="btn secondary toggle-active" data-id="${f.id}" data-active="${f.is_active}" type="button">${f.is_active ? 'Mark Inactive' : 'Mark Active'}</button>
           <button class="btn danger delete-formula" data-id="${f.id}" type="button">Delete</button>

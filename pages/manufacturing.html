@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ecovex Inventory — Manufacturing</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/shared.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
+    <div>
+      <h1><a href="../index.html">ECOVEX Inventory</a></h1>
+      <p>Chemical stock & what you can produce right now</p>
+    </div>
+  </header>
+  <nav id="nav"></nav>
+
+  <div id="stock-content"><p class="empty">Loading chemical stock…</p></div>
+
+  <div class="section-title">Production Capacity — what you can make right now</div>
+  <p class="empty" style="margin-top:-6px;margin-bottom:12px">Based on current chemical stock, assuming each formula gets the full available quantity of every ingredient to itself.</p>
+  <div id="capacity-content"><p class="empty">Loading…</p></div>
+
+  <div class="section-title">Shopping List Builder</div>
+  <p class="empty" style="margin-top:-6px;margin-bottom:12px">Pick one or more formulas and how much you want to make of each — see exactly which chemicals you're short on and roughly what it'll cost to top up.</p>
+  <div id="shop-msg"></div>
+  <div class="card-box">
+    <div id="shopping-formulas"><p class="empty">Loading formulas…</p></div>
+    <button class="btn" type="button" id="calc-shopping-btn" style="margin-top:14px">Calculate Shopping List</button>
+  </div>
+  <div id="shopping-result"></div>
+</div>
+
+<script>
+renderNav('manufacturing-stock', 'pages', 'manufacturing');
+const shopMsg = document.getElementById('shop-msg');
+
+let activeFormulas = [];      // formulas (active only), with base_batch_litres + solution name
+let allIngredients = [];      // formula_ingredients rows, with chemical name/unit joined
+let chemStockById = {};       // chemical_id -> { name, unit, available_qty, avg_unit_cost }
+
+async function loadChemicalsStock() {
+  const box = document.getElementById('stock-content');
+  const { data, error } = await db.from('chemical_stock').select('*');
+  if (error) { showMsg(box, 'error', error.message); return; }
+  if (!data || data.length === 0) { box.innerHTML = '<p class="empty">No chemicals yet. Add some under <a href="chemicals.html">Chemicals</a>.</p>'; return; }
+
+  const reorderCount = data.filter(c => c.status === 'Reorder').length;
+  let html = reorderCount > 0 ? `<div class="msg error">⚠ ${reorderCount} chemical${reorderCount > 1 ? 's' : ''} at or below reorder level</div>` : '';
+
+  html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Available</th><th>Cost per kg/L</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
+  ${data.map(c => `<tr>
+    <td>${escapeHtml(c.name)}${c.alt_name ? `<div class="empty">${escapeHtml(c.alt_name)}</div>` : ''}</td>
+    <td>${escapeHtml(c.unit)}</td>
+    <td>${Number(c.available_qty).toFixed(2)}</td>
+    <td>₹${(Number(c.avg_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.avg_unit_cost).toFixed(4)}/g or ml)</span></td>
+    <td>${c.reorder_level}</td>
+    <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td>
+  </tr>`).join('')}
+  </tbody></table>`;
+  box.innerHTML = html;
+
+  // keep a lookup available for the shopping list calc once chemicals load
+  data.forEach(c => {
+    chemStockById[c.id] = { name: c.name, unit: c.unit, available_qty: Number(c.available_qty), avg_unit_cost: Number(c.avg_unit_cost) };
+  });
+}
+
+async function loadProductionCapacity() {
+  const box = document.getElementById('capacity-content');
+  const { data, error } = await db.from('formula_max_producible').select('*').eq('is_active', true).order('solution_name');
+  if (error) { showMsg(box, 'error', error.message); return; }
+  if (!data || data.length === 0) { box.innerHTML = '<p class="empty">No active formulas yet. Add ingredients under <a href="formulas.html">Formulas</a>.</p>'; return; }
+
+  box.innerHTML = `<div class="card-box">` + data.map(f => {
+    const maxL = f.max_litres_now == null ? null : Number(f.max_litres_now);
+    const low = maxL !== null && maxL <= 0;
+    return `<div class="capacity-row">
+      <div>
+        <div class="cap-name">${escapeHtml(f.solution_name)}</div>
+        <div class="cap-sub">${escapeHtml(f.formula_name)}</div>
+      </div>
+      <div>
+        <div class="cap-value" style="${low ? 'color:var(--amber)' : ''}">${maxL === null ? '—' : maxL.toFixed(2) + ' L'}</div>
+        <div class="cap-bottleneck">${f.bottleneck_chemical ? 'Limited by: ' + escapeHtml(f.bottleneck_chemical) : (maxL === null ? 'No ingredients set' : '')}</div>
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+async function loadFormulasForShoppingList() {
+  const box = document.getElementById('shopping-formulas');
+  const [{ data: formulas, error: fErr }, { data: ingredients, error: iErr }] = await Promise.all([
+    db.from('formulas').select('*, solutions(name)').eq('is_active', true).order('name'),
+    db.from('formula_ingredients').select('*, chemicals(name, unit)'),
+  ]);
+  if (fErr || iErr) { showMsg(box, 'error', (fErr || iErr).message); return; }
+
+  activeFormulas = formulas || [];
+  allIngredients = ingredients || [];
+
+  if (activeFormulas.length === 0) { box.innerHTML = '<p class="empty">No active formulas yet.</p>'; return; }
+
+  box.innerHTML = activeFormulas.map(f => `
+    <div class="qty-row">
+      <label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">
+        <input type="checkbox" class="shop-select" data-formula-id="${f.id}">
+        ${escapeHtml(f.solutions?.name || 'Unknown solution')} <span class="empty">— ${escapeHtml(f.name)}</span>
+      </label>
+      <input type="number" class="shop-litres" data-formula-id="${f.id}" min="0" step="0.1" value="1">
+      <span class="empty">Litres</span>
+    </div>
+  `).join('');
+}
+
+function calculateShoppingList() {
+  shopMsg.innerHTML = '';
+  const selected = [...document.querySelectorAll('.shop-select:checked')];
+  if (selected.length === 0) { showMsg(shopMsg, 'error', 'Select at least one formula.'); return; }
+
+  const needed = {}; // chemical_id -> total qty needed across all selected formulas
+
+  selected.forEach(cb => {
+    const formulaId = cb.dataset.formulaId;
+    const litresInput = document.querySelector(`.shop-litres[data-formula-id="${formulaId}"]`);
+    const litres = Number(litresInput.value) || 0;
+    const formula = activeFormulas.find(f => f.id === formulaId);
+    if (!formula || litres <= 0 || !formula.base_batch_litres) return;
+
+    const scale = litres / formula.base_batch_litres;
+    allIngredients.filter(i => i.formula_id === formulaId).forEach(i => {
+      needed[i.chemical_id] = (needed[i.chemical_id] || 0) + i.qty_per_batch * scale;
+    });
+  });
+
+  const rows = Object.entries(needed).map(([chemId, qty]) => {
+    const stock = chemStockById[chemId] || { name: 'Unknown chemical', unit: '', available_qty: 0, avg_unit_cost: 0 };
+    const shortfall = Math.max(0, qty - stock.available_qty);
+    return {
+      name: stock.name,
+      unit: stock.unit,
+      needed: qty,
+      available: stock.available_qty,
+      shortfall,
+      cost: shortfall * stock.avg_unit_cost,
+    };
+  }).sort((a, b) => b.cost - a.cost);
+
+  renderShoppingResult(rows);
+}
+
+function renderShoppingResult(rows) {
+  const box = document.getElementById('shopping-result');
+  if (rows.length === 0) { box.innerHTML = '<p class="empty">Nothing to show — check quantities above.</p>'; return; }
+
+  const totalCost = rows.reduce((sum, r) => sum + r.cost, 0);
+  const shortRows = rows.filter(r => r.shortfall > 0.0001);
+
+  let html = `<div class="section-title">Result</div>`;
+  if (shortRows.length === 0) {
+    html += `<div class="msg success">✔ You already have enough of every chemical for this — nothing to buy.</div>`;
+  }
+  html += `<table><thead><tr><th>Chemical</th><th>Needed</th><th>In Stock</th><th>Shortfall</th><th>Est. Cost to Buy</th></tr></thead><tbody>
+  ${rows.map(r => `<tr>
+    <td>${escapeHtml(r.name)}</td>
+    <td>${r.needed.toFixed(2)} ${escapeHtml(r.unit)}</td>
+    <td>${r.available.toFixed(2)} ${escapeHtml(r.unit)}</td>
+    <td>${r.shortfall > 0.0001 ? `<span class="badge reorder">${r.shortfall.toFixed(2)} ${escapeHtml(r.unit)}</span>` : `<span class="badge ok">✔ OK</span>`}</td>
+    <td>${r.shortfall > 0.0001 ? '₹' + r.cost.toFixed(2) : '—'}</td>
+  </tr>`).join('')}
+  </tbody></table>`;
+  if (shortRows.length > 0) {
+    html += `<div class="msg success" style="background:var(--forest-tint)">Estimated total to buy: <strong>₹${totalCost.toFixed(2)}</strong></div>`;
+  }
+  box.innerHTML = html;
+}
+
+document.getElementById('calc-shopping-btn').addEventListener('click', calculateShoppingList);
+
+async function init() {
+  await Promise.all([loadChemicalsStock(), loadProductionCapacity(), loadFormulasForShoppingList()]);
+}
+init();
+</script>
+</body>
+</html>
