@@ -314,15 +314,15 @@
 
   <section>
     <h2 class="section-head"><span class="num">04</span>Silicone Emulsion — active % adjustment</h2>
-    <div class="section-note">This formula is dosed on a 60% active Silicone Emulsion (250 g/L → 150 g active). Real drums run 55–60% active per COA. Dose to a fixed <b>active weight</b>, not a fixed raw weight, so gloss and rain-resistance stay consistent batch to batch.</div>
+    <div class="section-note">This formula is now dosed on a 55% active Silicone Emulsion (272.7 g/L → 150 g active) — the strength actually being stocked. Real drums can still vary batch to batch per COA. Dose to a fixed <b>active weight</b>, not a fixed raw weight, so gloss and rain-resistance stay consistent.</div>
     <table class="qc">
       <tr><th>COA active %</th><th>Silicone Emulsion needed (per litre)</th><th>Adjust RO top-up (per litre)</th></tr>
-      <tr><td class="param">60%</td><td class="range">250.0 g (no change)</td><td class="fix">40.5 g (unchanged)</td></tr>
-      <tr><td class="param">58%</td><td class="range">258.6 g</td><td class="fix">31.9 g</td></tr>
-      <tr><td class="param">56%</td><td class="range">267.9 g</td><td class="fix">22.6 g</td></tr>
-      <tr><td class="param">55%</td><td class="range">272.7 g</td><td class="fix">17.8 g</td></tr>
+      <tr><td class="param">55%</td><td class="range">272.7 g (no change)</td><td class="fix">14.8 g (unchanged)</td></tr>
+      <tr><td class="param">56%</td><td class="range">267.9 g</td><td class="fix">19.6 g</td></tr>
+      <tr><td class="param">58%</td><td class="range">258.6 g</td><td class="fix">28.9 g</td></tr>
+      <tr><td class="param">60%</td><td class="range">250.0 g</td><td class="fix">37.5 g</td></tr>
     </table>
-    <p class="section-note" style="margin-top:14px;">Formula: <b>Adjusted g = 150 ÷ (active% ÷ 100)</b>. Add the difference above 250 g to the Silicone Emulsion, and subtract that same amount from the Phase E RO Water top-up so total batch weight stays exact. For 2 L / 3 L / 5 L batches, scale the 150 g target and the table values by the batch size.</p>
+    <p class="section-note" style="margin-top:14px;">Formula: <b>Adjusted g = 150 ÷ (active% ÷ 100)</b>. Add the difference above 272.7 g to the Silicone Emulsion, and subtract that same amount from the Phase E RO Water top-up so total batch weight stays exact. For 2 L / 3 L / 5 L batches, scale the 150 g target and the table values by the batch size.</p>
   </section>
 
   <section>
@@ -344,7 +344,7 @@
 
   <section>
     <h2 class="section-head"><span class="num">06</span>Batch costing</h2>
-    <div class="section-note">Indian market, 2026 small-quantity rates. Bulk procurement (25 kg+) cuts raw material cost 20–35%.</div>
+    <div class="section-note">Indian market, 2026 small-quantity rates. Bulk procurement (25 kg+) cuts raw material cost 20–35%. <b>Note:</b> these figures predate the 90% IPA / 55% Silicone Emulsion switch above and haven't been recalculated against real supplier rates — for accurate, live costing use the Cost Calculator on this formula's card in the app's Formulas page.</div>
     <table class="cost">
       <tr><th>Component</th><th style="text-align:right;">Cost</th></tr>
       <tr><td>Raw materials<br><span style="font-size:11px;color:var(--ink-soft);font-style:italic;">excludes fragrance oil — add your supplier's per-kg rate once finalised</span></td><td class="num" id="costRaw">₹380.58</td></tr>
@@ -384,7 +384,7 @@ const PHASES = [
     time: "25–30 min",
     items: [
       { name:"Xanthan Gum", per:4.0, role:"Gellant / rheology", note:"Thermally stable 5–60°C — safe at Hyderabad summer temps." },
-      { name:"IPA (99%)", per:30.0, role:"Co-solvent", note:"Add only after XG is fully hydrated." },
+      { name:"IPA (90%)", per:33.0, role:"Co-solvent", note:"Actually-stocked strength — dosed to the same 29.7 g/L pure isopropanol as the original 30.0 g/L @ 99%. Add only after XG is fully hydrated." },
     ],
     steps: [
       "With the vessel stirring on medium speed, sprinkle <span class='val' data-i='0'></span> Xanthan Gum slowly over 90 seconds. Do not dump it in.",
@@ -413,12 +413,12 @@ const PHASES = [
     tag: "Most critical phase",
     time: "20 min",
     items: [
-      { name:"Silicone Emulsion (60% active)", per:250.0, role:"Film backbone", note:"RTU active from this source ≈ 6.25%. Real drums run 55–60% active — see §04 for the adjusted weight and top-up water." },
+      { name:"Silicone Emulsion (55% active)", per:272.7, role:"Film backbone", note:"Actually-stocked strength — dosed to the same 150 g/L active silicone as 250.0 g/L @ 60%. See §04 if your drum's COA differs from 55%." },
       { name:"Amino Silicone Emulsion (40–50%)", per:100.0, role:"Rubber-bonding anchor", note:"Do not reduce — this bonds to the rubber surface for rain resistance." },
       { name:"Dimethicone (100–350 cSt)", per:30.0, role:"Film levelling", note:"Governs streak-free finish." },
     ],
     steps: [
-      "At medium-high speed, pour <span class='val' data-i='0'></span> Silicone Emulsion (60%) in a slow stream over 3 minutes.",
+      "At medium-high speed, pour <span class='val' data-i='0'></span> Silicone Emulsion (55%) in a slow stream over 3 minutes.",
       "Without stopping, pour <span class='val' data-i='1'></span> Amino Silicone Emulsion over 3 minutes.",
       "Without stopping, trickle in <span class='val' data-i='2'></span> Dimethicone over 1–2 minutes.",
       "Run the blender at <b>maximum speed for a full 8 minutes</b> — set a timer, don't cut it short.",
@@ -435,7 +435,7 @@ const PHASES = [
       { name:"Citric Acid (50% solution)", per:5.0, role:"pH anchor", note:"Add last, dropwise, to hit target pH." },
       { name:"Colour Dye (water-soluble)", per:0.5, role:"Brand identity", note:"Add only after pH is confirmed." },
       { name:"Fragrance Oil (Lemon or Tea Tree)", per:2.0, role:"Fragrance", note:"0.2% dose. Solubilises in the existing PEG-40/Polysorbate emulsifier system — no pre-blend needed. Add after pH is confirmed." },
-      { name:"RO Water (top-up)", per:40.5, role:"Balance to target weight", note:"Add last — top up to the exact batch weight." },
+      { name:"RO Water (top-up)", per:14.8, role:"Balance to target weight", note:"Recomputed for the 90% IPA / 55% Silicone Emulsion doses above so the batch still totals exactly 1000 g/L (was 40.5 g/L). Add last — top up to the exact batch weight." },
     ],
     steps: [
       "Confirm the batch is below 35°C. At Hyderabad ambient temps, wait it out before proceeding — do not rush this.",
