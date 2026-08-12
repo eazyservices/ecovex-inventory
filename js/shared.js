@@ -34,7 +34,7 @@ const NAV_MANUFACTURING = [
   { key: 'manufacturing-stock', label: 'Stock', href: 'pages/manufacturing.html' },
   { key: 'chemicals', label: 'Chemicals', href: 'pages/chemicals.html' },
   { key: 'formulas', label: 'Formulas', href: 'pages/formulas.html' },
-  { key: 'history', label: 'History', href: 'pages/history.html' },
+  { key: 'history', label: 'History', href: 'pages/history.html?tab=chemicals' },
 ];
 
 function renderNav(activeKey, location, group) {

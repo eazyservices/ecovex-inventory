@@ -41,6 +41,12 @@ renderNav('history', 'pages', 'material');
 let mode = 'materials';
 let editingRowId = { materials: null, chemicals: null, solutions: null, returns: null };
 
+const requestedTab = new URLSearchParams(location.search).get('tab');
+if (requestedTab && ['materials', 'chemicals', 'solutions', 'returns'].includes(requestedTab)) {
+  mode = requestedTab;
+  document.querySelectorAll('#subtabs button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+}
+
 document.querySelectorAll('#subtabs button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#subtabs button').forEach(b => b.classList.remove('active'));

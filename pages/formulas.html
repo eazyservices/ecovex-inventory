@@ -15,15 +15,18 @@
     <img src="../assets/logo.png" alt="" class="logo" onerror="this.style.display='none'">
     <div>
       <h1><a href="../index.html">ECOVEX Inventory</a></h1>
-      <p>Formulas — the ingredient list &amp; quantities behind each solution you prepare in-house</p>
+      <p>Formulas — one card per product, with what you can make right now and its full SOP</p>
     </div>
   </header>
   <nav id="nav"></nav>
 
   <div id="msg"></div>
 
+  <div class="section-title">Your Formulas</div>
+  <div id="formula-cards"><p class="empty">Loading…</p></div>
+
   <div class="section-title">Add a new formula</div>
-  <p class="empty" style="margin-top:-6px;margin-bottom:12px">There's no file upload here — type the ingredient list in below, the same way you'd fill in Kit Templates. Once created, add its ingredients from the list below.</p>
+  <p class="empty" style="margin-top:-6px;margin-bottom:12px">There's no file upload here — type the ingredient list in below, the same way you'd fill in Kit Templates. Once created, add its ingredients from its card above.</p>
   <form class="card" id="new-formula-form">
     <label>Solution
       <select name="solution_id" id="new-formula-solution" required></select>
@@ -46,21 +49,50 @@
     <button class="btn" type="submit">Create Formula</button>
   </form>
 
-  <div class="section-title">Your Formulas</div>
-  <div id="formulas-list"><p class="empty">Loading…</p></div>
+  <div class="section-title">🗄 Archived Formulas</div>
+  <button class="btn secondary" id="toggle-archived-btn" type="button" style="margin-bottom:14px">Show Archived</button>
+  <div id="archived-list" style="display:none"></div>
 </div>
 
 <script>
 renderNav('formulas', 'pages', 'manufacturing');
 const msg = document.getElementById('msg');
 let chemicals = [];
-let expandedFormulaIds = new Set();
+let capacityByFormula = {};   // formula_id -> { max_litres_now, bottleneck_chemical }
+let ingredientsByFormula = {}; // formula_id -> [{ chemical_id, qty_per_batch, chemicals: {name, unit} }]
+let chemCostById = {};        // chemical_id -> avg_unit_cost
+let expandedManageId = null;  // formula_id with Manage Ingredients open
+let expandedCalcId = null;    // formula_id with Cost Calculator open
+let calcScale = {};           // formula_id -> current litres shown in its calculator
 
 async function init() {
   await refreshSolutionDropdown();
   const { data: c } = await db.from('chemicals').select('id,name,unit').order('name');
   chemicals = c || [];
-  loadFormulas();
+  await loadAll();
+}
+
+async function loadAll() {
+  const [{ data: capacity }, { data: ingredients }, { data: stock }] = await Promise.all([
+    db.from('formula_max_producible').select('*'),
+    db.from('formula_ingredients').select('*, chemicals(name, unit)'),
+    db.from('chemical_stock').select('id, avg_unit_cost'),
+  ]);
+
+  capacityByFormula = {};
+  (capacity || []).forEach(c => { capacityByFormula[c.formula_id] = c; });
+
+  ingredientsByFormula = {};
+  (ingredients || []).forEach(i => {
+    if (!ingredientsByFormula[i.formula_id]) ingredientsByFormula[i.formula_id] = [];
+    ingredientsByFormula[i.formula_id].push(i);
+  });
+
+  chemCostById = {};
+  (stock || []).forEach(s => { chemCostById[s.id] = Number(s.avg_unit_cost) || 0; });
+
+  loadCards();
+  loadArchived();
 }
 
 async function refreshSolutionDropdown(selectId) {
@@ -106,48 +138,53 @@ document.getElementById('new-formula-form').addEventListener('submit', async (e)
   });
   btn.disabled = false; btn.textContent = 'Create Formula';
   if (error) return showMsg(msg, 'error', error.message);
-  showMsg(msg, 'success', 'Formula created — add its ingredients below.');
+  showMsg(msg, 'success', 'Formula created — add its ingredients from its card above.');
   e.target.reset();
-  loadFormulas();
+  loadAll();
 });
 
-async function loadFormulas() {
-  const listEl = document.getElementById('formulas-list');
-  const { data: formulas, error } = await db.from('formulas').select('*, solutions(name)').order('name');
-  if (error) { showMsg(listEl, 'error', error.message); return; }
-  if (!formulas || formulas.length === 0) { listEl.innerHTML = '<p class="empty">No formulas yet — create one above.</p>'; return; }
+function ingredientCostAt(formulaId, baseBatchLitres, litres) {
+  const rows = ingredientsByFormula[formulaId] || [];
+  const scale = baseBatchLitres > 0 ? litres / baseBatchLitres : 0;
+  let total = 0;
+  rows.forEach(i => { total += i.qty_per_batch * scale * (chemCostById[i.chemical_id] || 0); });
+  return total;
+}
 
-  const { data: ingredients } = await db.from('formula_ingredients').select('*, chemicals(name, unit)');
+function renderCostCalc(f) {
+  const scale = calcScale[f.id] || f.base_batch_litres;
+  const presets = [1, 2, 3, 5];
+  const total = ingredientCostAt(f.id, f.base_batch_litres, scale);
+  const perLitre = scale > 0 ? total / scale : 0;
 
-  listEl.innerHTML = formulas.map(f => {
-    const fIngredients = (ingredients || []).filter(i => i.formula_id === f.id);
-    const isExpanded = expandedFormulaIds.has(f.id);
-    return `
-    <div class="card-box" data-formula-id="${f.id}">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <strong>${escapeHtml(f.name)}</strong> — for <em>${escapeHtml(f.solutions?.name || 'unknown solution')}</em>
-          <div class="empty">Base batch: ${f.base_batch_litres}L ${f.version ? '· ' + escapeHtml(f.version) : ''} ${f.is_active ? '' : '· inactive'}</div>
-          ${f.notes ? `<div class="empty">${escapeHtml(f.notes)}</div>` : ''}
-        </div>
-        <div style="display:flex;gap:8px">
-          ${f.manual_url ? `<a class="btn secondary" href="${escapeHtml(f.manual_url)}" target="_blank" style="text-decoration:none;display:inline-block">📄 View Full SOP</a>` : ''}
-          <button class="btn secondary toggle-ingredients" data-id="${f.id}" type="button">${isExpanded ? 'Hide Ingredients' : `View Ingredients (${fIngredients.length})`}</button>
-          <button class="btn secondary toggle-active" data-id="${f.id}" data-active="${f.is_active}" type="button">${f.is_active ? 'Mark Inactive' : 'Mark Active'}</button>
-          <button class="btn danger delete-formula" data-id="${f.id}" type="button">Delete</button>
-        </div>
+  return `
+    <div class="cost-calc" data-formula-id="${f.id}">
+      <div class="cost-calc-scale">
+        ${presets.map(l => `<button type="button" class="btn secondary calc-preset ${Number(scale) === l ? 'active' : ''}" data-l="${l}">${l}L</button>`).join('')}
+        <span class="empty">or</span>
+        <input type="number" class="calc-custom" min="0.01" step="0.01" value="${scale}"> <span class="empty">L</span>
       </div>
+      <div class="cost-calc-result">
+        <div class="ccr-item"><div class="ccr-label">Total ingredient cost</div><div class="ccr-value">₹${total.toFixed(2)}</div></div>
+        <div class="ccr-item"><div class="ccr-label">Cost per litre</div><div class="ccr-value">₹${perLitre.toFixed(2)}</div></div>
+      </div>
+      <p class="empty">Estimate only — based on current chemical stock's weighted-average cost. Real logged batches may use q.s./range ingredients slightly differently.</p>
+    </div>`;
+}
 
-      ${isExpanded ? `
+function renderManageIngredients(f) {
+  const fIngredients = ingredientsByFormula[f.id] || [];
+  return `
+    <div class="cost-calc" data-formula-id="${f.id}">
       ${fIngredients.length ? `
-      <table style="margin-top:10px"><thead><tr><th>Chemical</th><th>Qty per batch</th><th>Unit</th><th></th></tr></thead><tbody>
+      <table style="margin-top:0"><thead><tr><th>Chemical</th><th>Qty per batch</th><th>Unit</th><th></th></tr></thead><tbody>
         ${fIngredients.map(i => `<tr>
           <td>${escapeHtml(i.chemicals?.name || 'unknown')}</td>
           <td>${i.qty_per_batch}</td>
           <td>${escapeHtml(i.chemicals?.unit || '')}</td>
           <td><button class="btn secondary delete-ingredient" data-id="${i.id}" type="button" style="padding:4px 10px;font-size:12px">Remove</button></td>
         </tr>`).join('')}
-      </tbody></table>` : `<p class="empty" style="margin-top:10px">No ingredients yet.</p>`}
+      </tbody></table>` : `<p class="empty">No ingredients yet.</p>`}
 
       <form class="inline-form add-ingredient-form" data-formula-id="${f.id}">
         <label>Chemical
@@ -161,22 +198,103 @@ async function loadFormulas() {
         </label>
         <button class="btn secondary" type="submit">+ Add Ingredient</button>
       </form>
-      ` : ''}
     </div>`;
-  }).join('');
+}
 
-  listEl.querySelectorAll('.toggle-ingredients').forEach(btn => {
+function renderCard(f) {
+  const cap = capacityByFormula[f.id];
+  const maxL = cap && cap.max_litres_now != null ? Number(cap.max_litres_now) : null;
+  const low = maxL !== null && maxL <= 0;
+  const hasManual = !!f.manual_url;
+  const isManaging = expandedManageId === f.id;
+  const isCalcOpen = expandedCalcId === f.id;
+
+  const inner = `
+    <h3>${escapeHtml(f.solutions?.name || 'Unknown solution')}</h3>
+    <div class="fc-version">${escapeHtml(f.name)}${f.version ? ' · ' + escapeHtml(f.version) : ''}</div>
+    <div class="fc-stat ${low ? 'low' : ''}">
+      <div class="fc-value">${maxL === null ? 'No ingredients set' : maxL.toFixed(2) + ' L producible now'}</div>
+      ${cap && cap.bottleneck_chemical ? `<div class="fc-bottleneck">Limited by: ${escapeHtml(cap.bottleneck_chemical)}</div>` : ''}
+    </div>
+    ${hasManual ? `<div class="fc-sop-hint">📄 Click to view full SOP →</div>` : `<div class="fc-no-sop">No SOP linked yet</div>`}
+    <div class="fc-actions">
+      <button type="button" class="btn secondary fc-manage" data-id="${f.id}">⚙ ${isManaging ? 'Hide Ingredients' : 'Manage Ingredients'}</button>
+      <button type="button" class="btn secondary fc-calc" data-id="${f.id}">🧮 ${isCalcOpen ? 'Hide Calculator' : 'Cost Calculator'}</button>
+    </div>
+    ${isManaging ? renderManageIngredients(f) : ''}
+    ${isCalcOpen ? renderCostCalc(f) : ''}
+    <div class="fc-footer">
+      <button type="button" class="btn secondary fc-archive" data-id="${f.id}">Mark Inactive</button>
+    </div>
+  `;
+
+  if (hasManual) {
+    return `<a class="formula-card clickable" href="${escapeHtml(f.manual_url)}" target="_blank" data-formula-id="${f.id}">${inner}</a>`;
+  }
+  return `<div class="formula-card" data-formula-id="${f.id}">${inner}</div>`;
+}
+
+async function loadCards() {
+  const el = document.getElementById('formula-cards');
+  const { data: formulas, error } = await db.from('formulas').select('*, solutions(name)').eq('is_active', true).order('name');
+  if (error) { showMsg(el, 'error', error.message); return; }
+  if (!formulas || formulas.length === 0) { el.innerHTML = '<p class="empty">No active formulas yet — create one below.</p>'; return; }
+
+  el.innerHTML = `<div class="formula-grid">${formulas.map(renderCard).join('')}</div>`;
+  wireCardActions(el);
+}
+
+function wireCardActions(root) {
+  // stop clicks on interactive controls from triggering the card-level SOP link —
+  // preventDefault (not just stopPropagation) is required since these sit inside an <a>
+  root.querySelectorAll('.fc-manage, .fc-calc, .fc-archive, .cost-calc, table').forEach(el => {
+    el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+  });
+
+  root.querySelectorAll('.fc-manage').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id = btn.dataset.id;
-      if (expandedFormulaIds.has(id)) expandedFormulaIds.delete(id);
-      else expandedFormulaIds.add(id);
-      loadFormulas();
+      expandedManageId = expandedManageId === btn.dataset.id ? null : btn.dataset.id;
+      loadCards();
     });
   });
 
-  listEl.querySelectorAll('.add-ingredient-form').forEach(form => {
+  root.querySelectorAll('.fc-calc').forEach(btn => {
+    btn.addEventListener('click', () => {
+      expandedCalcId = expandedCalcId === btn.dataset.id ? null : btn.dataset.id;
+      loadCards();
+    });
+  });
+
+  root.querySelectorAll('.fc-archive').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const { error } = await db.from('formulas').update({ is_active: false }).eq('id', btn.dataset.id);
+      if (error) return showMsg(msg, 'error', error.message);
+      showMsg(msg, 'success', 'Formula marked inactive — see Archived Formulas below.');
+      loadAll();
+    });
+  });
+
+  root.querySelectorAll('.calc-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.cost-calc');
+      calcScale[card.dataset.formulaId] = Number(btn.dataset.l);
+      loadCards();
+    });
+  });
+
+  root.querySelectorAll('.calc-custom').forEach(input => {
+    input.addEventListener('change', () => {
+      const card = input.closest('.cost-calc');
+      calcScale[card.dataset.formulaId] = Number(input.value) || 0;
+      loadCards();
+    });
+  });
+
+  root.querySelectorAll('.add-ingredient-form').forEach(form => {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const fd = new FormData(form);
       const { error } = await db.from('formula_ingredients').insert({
         formula_id: form.dataset.formulaId,
@@ -185,34 +303,63 @@ async function loadFormulas() {
       });
       if (error) return showMsg(msg, 'error', error.message);
       showMsg(msg, 'success', 'Ingredient added.');
-      loadFormulas();
+      loadAll();
     });
   });
 
-  listEl.querySelectorAll('.delete-ingredient').forEach(btn => {
-    btn.addEventListener('click', async () => {
+  root.querySelectorAll('.delete-ingredient').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
       const { error } = await db.from('formula_ingredients').delete().eq('id', btn.dataset.id);
       if (error) return showMsg(msg, 'error', error.message);
-      loadFormulas();
+      loadAll();
     });
   });
+}
 
-  listEl.querySelectorAll('.toggle-active').forEach(btn => {
+document.getElementById('toggle-archived-btn').addEventListener('click', () => {
+  const box = document.getElementById('archived-list');
+  const showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : '';
+  document.getElementById('toggle-archived-btn').textContent = showing ? 'Show Archived' : 'Hide Archived';
+});
+
+async function loadArchived() {
+  const el = document.getElementById('archived-list');
+  const { data: formulas, error } = await db.from('formulas').select('*, solutions(name)').eq('is_active', false).order('name');
+  if (error) { showMsg(el, 'error', error.message); return; }
+  if (!formulas || formulas.length === 0) { el.innerHTML = '<p class="empty">No archived formulas.</p>'; return; }
+
+  el.innerHTML = formulas.map(f => `
+    <div class="card-box" data-formula-id="${f.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>${escapeHtml(f.name)}</strong> — for <em>${escapeHtml(f.solutions?.name || 'unknown solution')}</em>
+          <div class="empty">Base batch: ${f.base_batch_litres}L ${f.version ? '· ' + escapeHtml(f.version) : ''}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn secondary reactivate-formula" data-id="${f.id}" type="button">Mark Active</button>
+          <button class="btn danger delete-formula" data-id="${f.id}" type="button">Delete</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  el.querySelectorAll('.reactivate-formula').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const newActive = btn.dataset.active !== 'true';
-      const { error } = await db.from('formulas').update({ is_active: newActive }).eq('id', btn.dataset.id);
+      const { error } = await db.from('formulas').update({ is_active: true }).eq('id', btn.dataset.id);
       if (error) return showMsg(msg, 'error', error.message);
-      loadFormulas();
+      showMsg(msg, 'success', 'Formula reactivated.');
+      loadAll();
     });
   });
 
-  listEl.querySelectorAll('.delete-formula').forEach(btn => {
+  el.querySelectorAll('.delete-formula').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Delete this formula and all its ingredients?')) return;
+      if (!confirm('Permanently delete this formula and all its ingredients?')) return;
       const { error } = await db.from('formulas').delete().eq('id', btn.dataset.id);
       if (error) return showMsg(msg, 'error', error.message);
       showMsg(msg, 'success', 'Formula deleted.');
-      loadFormulas();
+      loadAll();
     });
   });
 }

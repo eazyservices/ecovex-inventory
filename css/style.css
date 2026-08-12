@@ -184,3 +184,45 @@ button.btn.danger { background: var(--amber-tint); color: var(--amber); }
 .capacity-row .cap-sub { color: var(--slate); font-size: 12.5px; }
 .capacity-row .cap-value { font-family: inherit; font-weight: 700; font-size: 16px; color: var(--forest-dark); text-align: right; white-space: nowrap; }
 .capacity-row .cap-bottleneck { font-size: 12px; color: var(--slate); text-align: right; }
+
+/* ---------- formula catalog cards ---------- */
+.formula-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin: 18px 0 30px; }
+.formula-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: border-color .12s ease, transform .12s ease, box-shadow .12s ease;
+  cursor: default;
+}
+.formula-card.clickable { cursor: pointer; }
+.formula-card.clickable:hover { border-color: var(--forest); transform: translateY(-2px); box-shadow: 0 8px 20px -12px rgba(15, 107, 71, 0.35); }
+.formula-card h3 { margin: 0 0 2px; font-size: 18px; color: var(--ink); }
+.formula-card .fc-version { color: var(--slate); font-size: 12.5px; margin-bottom: 14px; }
+.formula-card .fc-stat { background: var(--forest-tint); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+.formula-card .fc-stat.low { background: var(--amber-tint); }
+.formula-card .fc-stat .fc-value { font-weight: 700; font-size: 17px; color: var(--forest-dark); }
+.formula-card .fc-stat.low .fc-value { color: var(--amber); }
+.formula-card .fc-stat .fc-bottleneck { font-size: 12px; color: var(--slate); margin-top: 2px; }
+.formula-card .fc-sop-hint { font-size: 12px; color: var(--forest-dark); font-weight: 700; margin-bottom: 14px; }
+.formula-card .fc-no-sop { font-size: 12px; color: var(--slate); font-style: italic; margin-bottom: 14px; }
+.formula-card .fc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.formula-card .fc-footer { display: flex; justify-content: flex-end; margin-top: 10px; }
+.formula-card .fc-footer button { padding: 3px 8px; font-size: 11px; }
+
+/* ---------- cost calculator ---------- */
+.cost-calc { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.cost-calc-scale { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+.cost-calc-scale button { padding: 5px 12px; font-size: 12.5px; }
+.cost-calc-scale button.active { background: var(--forest); color: #fff; border-color: var(--forest); }
+.cost-calc-scale input { width: 70px; padding: 5px 8px; font-size: 12.5px; }
+.cost-calc-result { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
+.cost-calc-result .ccr-item .ccr-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--slate); }
+.cost-calc-result .ccr-item .ccr-value { font-weight: 700; font-size: 16px; color: var(--forest-dark); }
+
+/* ---------- filter row ---------- */
+.filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13.5px; font-weight: 600; color: #3a423c; }
+.filter-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--forest); }

@@ -33,6 +33,8 @@
 renderNav('chemicals', 'pages', 'manufacturing');
 let mode = 'stock';
 let editingId = null;
+let stockData = [];
+let reorderOnly = false;
 
 document.querySelectorAll('#subtabs button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -54,24 +56,42 @@ async function renderStock() {
   const content = document.getElementById('content');
   const { data, error } = await db.from('chemical_stock').select('*');
   if (error) { showMsg(content, 'error', error.message); return; }
-  if (!data || data.length === 0) { content.innerHTML = '<p class="empty">No chemicals yet.</p>'; return; }
+  stockData = data || [];
+  renderStockTable();
+}
 
-  const reorderCount = data.filter(c => c.status === 'Reorder').length;
+function renderStockTable() {
+  const content = document.getElementById('content');
+  if (stockData.length === 0) { content.innerHTML = '<p class="empty">No chemicals yet.</p>'; return; }
+
+  const reorderCount = stockData.filter(c => c.status === 'Reorder').length;
   let html = reorderCount > 0 ? `<div class="msg error">⚠ ${reorderCount} chemical${reorderCount > 1 ? 's' : ''} at or below reorder level</div>` : '';
 
-  html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Purchased</th><th>Used</th><th>Available</th><th>Cost per kg/L</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
-  ${data.map(c => `<tr>
-    <td>${escapeHtml(c.name)}${c.alt_name ? `<div class="empty">${escapeHtml(c.alt_name)}</div>` : ''}</td>
-    <td>${escapeHtml(c.unit)}</td>
-    <td>${Number(c.total_purchased).toFixed(2)}</td>
-    <td>${Number(c.total_used).toFixed(2)}</td>
-    <td>${Number(c.available_qty).toFixed(2)}</td>
-    <td>₹${(Number(c.avg_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.avg_unit_cost).toFixed(4)}/g or ml)</span></td>
-    <td>${c.reorder_level}</td>
-    <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td>
-  </tr>`).join('')}
-  </tbody></table>`;
+  html += `<label class="filter-row"><input type="checkbox" id="reorder-only-toggle" ${reorderOnly ? 'checked' : ''}> Show only items needing reorder</label>`;
+
+  const rows = reorderOnly ? stockData.filter(c => c.status === 'Reorder') : stockData;
+  if (rows.length === 0) {
+    html += `<p class="empty">No chemicals at or below reorder level right now.</p>`;
+  } else {
+    html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Purchased</th><th>Used</th><th>Available</th><th>Cost per kg/L</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
+    ${rows.map(c => `<tr>
+      <td>${escapeHtml(c.name)}${c.alt_name ? `<div class="empty">${escapeHtml(c.alt_name)}</div>` : ''}</td>
+      <td>${escapeHtml(c.unit)}</td>
+      <td>${Number(c.total_purchased).toFixed(2)}</td>
+      <td>${Number(c.total_used).toFixed(2)}</td>
+      <td>${Number(c.available_qty).toFixed(2)}</td>
+      <td>₹${(Number(c.avg_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.avg_unit_cost).toFixed(4)}/g or ml)</span></td>
+      <td>${c.reorder_level}</td>
+      <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+  }
   content.innerHTML = html;
+
+  document.getElementById('reorder-only-toggle').addEventListener('change', (e) => {
+    reorderOnly = e.target.checked;
+    renderStockTable();
+  });
 }
 
 async function renderPurchase() {

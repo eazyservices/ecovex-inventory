@@ -20,7 +20,7 @@
   </header>
   <nav id="nav"></nav>
 
-  <div id="stock-content"><p class="empty">Loading chemical stock…</p></div>
+  <div id="stock-summary"><p class="empty">Loading chemical stock…</p></div>
 
   <div class="section-title">Production Capacity — what you can make right now</div>
   <p class="empty" style="margin-top:-6px;margin-bottom:12px">Based on current chemical stock, assuming each formula gets the full available quantity of every ingredient to itself.</p>
@@ -45,27 +45,16 @@ let allIngredients = [];      // formula_ingredients rows, with chemical name/un
 let chemStockById = {};       // chemical_id -> { name, unit, available_qty, avg_unit_cost }
 
 async function loadChemicalsStock() {
-  const box = document.getElementById('stock-content');
+  const box = document.getElementById('stock-summary');
   const { data, error } = await db.from('chemical_stock').select('*');
   if (error) { showMsg(box, 'error', error.message); return; }
   if (!data || data.length === 0) { box.innerHTML = '<p class="empty">No chemicals yet. Add some under <a href="chemicals.html">Chemicals</a>.</p>'; return; }
 
   const reorderCount = data.filter(c => c.status === 'Reorder').length;
-  let html = reorderCount > 0 ? `<div class="msg error">⚠ ${reorderCount} chemical${reorderCount > 1 ? 's' : ''} at or below reorder level</div>` : '';
+  box.innerHTML = (reorderCount > 0 ? `<div class="msg error">⚠ ${reorderCount} chemical${reorderCount > 1 ? 's' : ''} at or below reorder level</div>` : `<div class="msg success">✔ All chemical stock levels OK</div>`)
+    + `<p class="empty">View full chemical stock, log purchases, or manage chemicals under <a href="chemicals.html">Chemicals →</a></p>`;
 
-  html += `<table><thead><tr><th>Chemical</th><th>Unit</th><th>Available</th><th>Cost per kg/L</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
-  ${data.map(c => `<tr>
-    <td>${escapeHtml(c.name)}${c.alt_name ? `<div class="empty">${escapeHtml(c.alt_name)}</div>` : ''}</td>
-    <td>${escapeHtml(c.unit)}</td>
-    <td>${Number(c.available_qty).toFixed(2)}</td>
-    <td>₹${(Number(c.avg_unit_cost)*1000).toFixed(2)} <span class="empty">(≈₹${Number(c.avg_unit_cost).toFixed(4)}/g or ml)</span></td>
-    <td>${c.reorder_level}</td>
-    <td><span class="badge ${c.status === 'OK' ? 'ok' : 'reorder'}">${c.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td>
-  </tr>`).join('')}
-  </tbody></table>`;
-  box.innerHTML = html;
-
-  // keep a lookup available for the shopping list calc once chemicals load
+  // keep a lookup available for the shopping list calc
   data.forEach(c => {
     chemStockById[c.id] = { name: c.name, unit: c.unit, available_qty: Number(c.available_qty), avg_unit_cost: Number(c.avg_unit_cost) };
   });

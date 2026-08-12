@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ecovex Waterless Car Wash Concentrate — Master Formula</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0B1F38;
+    --navy-2:#132a4a;
+    --paper:#F6F4EF;
+    --paper-2:#EFEBE1;
+    --gold:#C08A2E;
+    --gold-soft:#E4C989;
+    --ink:#1B2430;
+    --ink-soft:#5B6472;
+    --line:#DCD5C6;
+    --reject:#8C2F2F;
+    --reject-bg:#FBEDEC;
+    --ok:#2F6B4F;
+    --ok-bg:#EAF3EE;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Manrope',sans-serif;
+    line-height:1.5;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;}
+
+  /* HEADER */
+  header{
+    background:var(--navy);
+    color:var(--paper);
+    padding:38px 0 30px;
+    border-bottom:5px solid var(--gold);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--gold-soft);
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(28px,4.4vw,42px);
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:#C9D2DE;
+    font-size:15px;
+    margin:0;
+  }
+
+  /* SCALE SELECTOR */
+  .scale-bar{
+    background:var(--navy-2);
+    border-top:1px solid rgba(255,255,255,.08);
+  }
+  .scale-inner{
+    max-width:920px;margin:0 auto;padding:16px 24px;
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  }
+  .scale-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:#AEB9C9;letter-spacing:.06em;text-transform:uppercase;
+  }
+  .scale-btns{display:flex;gap:8px;}
+  .scale-btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;
+    background:transparent;
+    border:1.5px solid rgba(255,255,255,.25);
+    color:#DCE3EC;
+    padding:8px 18px;
+    border-radius:3px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .scale-btn:hover{border-color:var(--gold-soft);}
+  .scale-btn.active{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--navy);
+  }
+  .scale-meta{
+    margin-left:auto;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:#AEB9C9;
+    display:flex;gap:18px;flex-wrap:wrap;
+  }
+  .scale-meta b{color:var(--gold-soft);font-weight:600;}
+
+  /* SECTIONS */
+  section{padding:36px 0 6px;}
+  .section-head{
+    display:flex;align-items:baseline;gap:12px;
+    border-bottom:2px solid var(--navy);
+    padding-bottom:8px;margin-bottom:18px;
+  }
+  .section-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;color:var(--gold);font-weight:600;
+  }
+  h2{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:22px;
+    margin:0;
+    color:var(--navy);
+  }
+  .note{
+    font-size:13.5px;color:var(--ink-soft);margin:0 0 16px;
+  }
+
+  /* EQUIPMENT NOTE BOX */
+  .callout{
+    background:var(--paper-2);
+    border-left:4px solid var(--gold);
+    padding:12px 16px;
+    font-size:13.5px;
+    margin-bottom:22px;
+    border-radius:0 4px 4px 0;
+  }
+  .callout b{color:var(--navy);}
+
+  /* INGREDIENT TABLES */
+  .phase-block{margin-bottom:22px;}
+  .phase-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--navy);
+    background:var(--gold-soft);
+    display:inline-block;
+    padding:3px 10px;
+    border-radius:3px;
+    margin-bottom:8px;
+  }
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  .ing-table td, .ing-table th{
+    padding:8px 10px;border-bottom:1px solid var(--line);
+    text-align:left;vertical-align:top;
+  }
+  .ing-table th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--ink-soft);font-weight:600;
+  }
+  .ing-id{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--gold);font-weight:600;width:36px;
+  }
+  .qty{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;color:var(--navy);white-space:nowrap;
+  }
+  .ing-note{color:var(--ink-soft);font-size:12.5px;}
+
+  /* PROCESS STEPS */
+  .step{
+    display:grid;
+    grid-template-columns:44px 1fr;
+    gap:14px;
+    padding:14px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-num{
+    font-family:'Fraunces',serif;font-weight:600;font-size:24px;color:var(--gold);
+  }
+  .step-head{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;
+  }
+  .step-title{font-weight:700;color:var(--navy);font-size:15px;}
+  .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;font-weight:600;letter-spacing:.04em;
+    padding:2px 8px;border-radius:10px;text-transform:uppercase;
+  }
+  .tag-tool{background:#E4E9F2;color:var(--navy);}
+  .tag-time{background:var(--paper-2);color:var(--ink-soft);}
+  .tag-ccp{background:var(--reject-bg);color:var(--reject);}
+  .step-body{font-size:14px;color:var(--ink);}
+  .qi{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--navy);}
+  .step-fail{
+    margin-top:6px;font-size:13px;color:var(--reject);
+    background:var(--reject-bg);padding:6px 10px;border-radius:4px;
+  }
+
+  /* pH TABLE */
+  .ph-table td{padding:10px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top;}
+  .ph-table td:first-child{font-weight:700;color:var(--navy);width:150px;}
+
+  /* QC CHECKLIST */
+  .checklist{list-style:none;padding:0;margin:0;}
+  .checklist li{
+    display:flex;align-items:flex-start;gap:10px;
+    padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;
+  }
+  .checklist input{margin-top:3px;width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;}
+
+  /* REJECT GRID */
+  .reject-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  @media(max-width:640px){.reject-grid{grid-template-columns:1fr;}}
+  .reject-item{
+    background:var(--reject-bg);border-radius:4px;padding:10px 12px;font-size:13.5px;color:#5c2020;
+  }
+  .reject-item b{color:var(--reject);display:block;font-size:12px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;font-family:'IBM Plex Mono',monospace;}
+
+  /* SIGN OFF */
+  .signoff td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .signoff td:last-child{width:60px;text-align:center;}
+  .sign-line{display:flex;gap:40px;margin-top:24px;font-size:13.5px;}
+  .sign-line div{flex:1;border-top:1px solid var(--ink);padding-top:6px;color:var(--ink-soft);}
+
+  footer{
+    text-align:center;padding:30px 24px 10px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;color:var(--ink-soft);
+  }
+
+  @media print{
+    .scale-bar{position:static;}
+    body{padding-bottom:0;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap" style="padding-top:14px;padding-bottom:0">
+  <a href="../formulas.html" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);text-decoration:none;">← Back to Formulas</a>
+</div>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Ecovex · Manufacturing &amp; QC Manual · Rev 5.0</p>
+    <h1>Waterless Car Wash Concentrate</h1>
+    <p class="sub">Amino silicone system with anti-separation stabilizer (Phase F / HEC) — whisk &amp; stick-blender method</p>
+  </div>
+</header>
+
+<div class="scale-bar">
+  <div class="scale-inner">
+    <span class="scale-label">Batch size</span>
+    <div class="scale-btns" id="scaleBtns">
+      <button class="scale-btn" data-scale="1">1 L</button>
+      <button class="scale-btn" data-scale="2">2 L</button>
+      <button class="scale-btn" data-scale="3">3 L</button>
+      <button class="scale-btn" data-scale="5">5 L</button>
+    </div>
+    <div class="scale-meta">
+      <span>Yield: <b id="metaVol">1 L</b></span>
+      <span>Active time: <b id="metaTime">~85 min</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>Equipment for this batch size</h2></div>
+    <div class="callout" id="equipNote"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>Ingredients</h2></div>
+    <p class="note">Quantities recalculate automatically for the selected batch size. Weigh solids on a scale; measure liquids in a graduated cylinder — don't eyeball.</p>
+
+    <div class="phase-block">
+      <span class="phase-title">Phase A — Water Phase</span>
+      <table class="ing-table">
+        <tr><th>ID</th><th>Ingredient</th><th>Qty</th><th>Note</th></tr>
+        <tr><td class="ing-id">A1</td><td>Distilled water (initial charge)</td><td class="qty" data-q="A1"></td><td class="ing-note">Distilled only — no RO substitution.</td></tr>
+        <tr><td class="ing-id">F1</td><td>HEC (Hydroxyethylcellulose)</td><td class="qty" data-q="F1"></td><td class="ing-note">Must be pre-dispersed in glycol before adding to water.</td></tr>
+        <tr><td class="ing-id">A2a</td><td>Propylene Glycol — for HEC slurry</td><td class="qty" data-q="A2a"></td><td class="ing-note">Used only to disperse F1.</td></tr>
+        <tr><td class="ing-id">A2b</td><td>Propylene Glycol — remainder</td><td class="qty" data-q="A2b"></td><td class="ing-note">Added with rest of Phase A.</td></tr>
+        <tr><td class="ing-id">A3</td><td>Glycerin</td><td class="qty" data-q="A3"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">A4</td><td>Polyquaternium-7</td><td class="qty" data-q="A4"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">A5</td><td>GHPTC</td><td class="qty" data-q="A5"></td><td class="ing-note">Pre-disperse in a little warm water first.</td></tr>
+        <tr><td class="ing-id">A6</td><td>Sodium Gluconate</td><td class="qty" data-q="A6"></td><td class="ing-note">Electrolyte — never exceed this ratio (cloud-point risk).</td></tr>
+        <tr><td class="ing-id">A7</td><td>C8/C10 APG</td><td class="qty" data-q="A7"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">A8</td><td>Sodium Benzoate</td><td class="qty" data-q="A8"></td><td class="ing-note">Electrolyte — never exceed this ratio (cloud-point risk).</td></tr>
+        <tr><td class="ing-id">A9</td><td>IPA 90% (Isopropyl Alcohol)</td><td class="qty" data-q="A9"></td><td class="ing-note">Flammable — add last, keep vessel covered.</td></tr>
+      </table>
+    </div>
+
+    <div class="phase-block">
+      <span class="phase-title">Phase B — Amino Silicone System</span>
+      <table class="ing-table">
+        <tr><th>ID</th><th>Ingredient</th><th>Qty</th><th>Note</th></tr>
+        <tr><td class="ing-id">B1</td><td>PEG-40 Hydrogenated Castor Oil</td><td class="qty" data-q="B1"></td><td class="ing-note">Primary emulsifier — weigh exactly.</td></tr>
+        <tr><td class="ing-id">B2</td><td>Polysorbate 20</td><td class="qty" data-q="B2"></td><td class="ing-note">Must be PS-20, not PS-80.</td></tr>
+        <tr><td class="ing-id">B3</td><td>Amino Silicone Emulsion</td><td class="qty" data-q="B3"></td><td class="ing-note">Confirm active % before use.</td></tr>
+        <tr><td class="ing-id">B4</td><td>Dimethicone 200–350 cSt</td><td class="qty" data-q="B4"></td><td class="ing-note"></td></tr>
+      </table>
+    </div>
+
+    <div class="phase-block">
+      <span class="phase-title">Phase C — Cleaning System</span>
+      <table class="ing-table">
+        <tr><th>ID</th><th>Ingredient</th><th>Qty</th><th>Note</th></tr>
+        <tr><td class="ing-id">C1</td><td>Coco Glucoside</td><td class="qty" data-q="C1"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">C2</td><td>CAPB (Cocamidopropyl Betaine)</td><td class="qty" data-q="C2"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">C3</td><td>BHT 10% solution (in Propylene Glycol)</td><td class="qty" data-q="C3"></td><td class="ing-note">Added in Phase B pre-blend, not Phase C.</td></tr>
+      </table>
+    </div>
+
+    <div class="phase-block">
+      <span class="phase-title">Phase D — Preservation &amp; pH</span>
+      <table class="ing-table">
+        <tr><th>ID</th><th>Ingredient</th><th>Qty</th><th>Note</th></tr>
+        <tr><td class="ing-id">D1</td><td>Phenoxyethanol</td><td class="qty" data-q="D1"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">D2</td><td>Ethylhexylglycerin</td><td class="qty" data-q="D2"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">D3</td><td>Citric Acid 50% solution</td><td class="qty" data-q="D3"></td><td class="ing-note">q.s. to pH 5.5–6.0 — add dropwise, record actual amount used.</td></tr>
+      </table>
+    </div>
+
+    <div class="phase-block">
+      <span class="phase-title">Phase E — Final Adjustment</span>
+      <table class="ing-table">
+        <tr><th>ID</th><th>Ingredient</th><th>Qty</th><th>Note</th></tr>
+        <tr><td class="ing-id">E1</td><td>Citric Fragrance (water-soluble)</td><td class="qty" data-q="E1"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">E2</td><td>Colorant (water-soluble)</td><td class="qty" data-q="E2"></td><td class="ing-note">Avoid oil-dispersible colorants.</td></tr>
+        <tr><td class="ing-id">E3</td><td>Distilled water — final top-up</td><td class="qty" data-q="E3"></td><td class="ing-note">Top up to exact volume in a graduated cylinder.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>Step-by-step process</h2></div>
+    <p class="note">Never reuse a Phase A vessel for Phase B without washing and drying it first — leftover anionic residue destabilizes the cationic amino silicone.</p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-head"><span class="step-title">Charge Phase A water</span><span class="tag tag-tool">—</span><span class="tag tag-time">1 min</span></div>
+        <div class="step-body">Measure <span class="qi" data-q="A1"></span> distilled water into the mixing vessel. Confirm distilled — never RO or tap.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-head"><span class="step-title">Disperse HEC</span><span class="tag tag-tool">Whisk, low–med</span><span class="tag tag-time">5–7 min</span><span class="tag tag-ccp">Checkpoint</span></div>
+        <div class="step-body">In a separate cup, stir <span class="qi" data-q="F1"></span> HEC into <span class="qi" data-q="A2a"></span> Propylene Glycol until a smooth, lump-free paste. Pour into the Phase A water while whisking continuously; keep whisking until completely clear — no fish-eyes or gel lumps.</div>
+        <div class="step-fail">Reject / do not proceed if: any fish-eyes, gel lumps, or cloudiness remain after 7 min.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-head"><span class="step-title">Build Phase A</span><span class="tag tag-tool">Whisk, low–med</span><span class="tag tag-time">~17 min total</span></div>
+        <div class="step-body">Add one at a time, whisking 2–3 min between each: <span class="qi" data-q="A2b"></span> Propylene Glycol (remainder) → <span class="qi" data-q="A3"></span> Glycerin → <span class="qi" data-q="A4"></span> Polyquaternium-7 → <span class="qi" data-q="A5"></span> GHPTC (pre-mixed in warm water) → <span class="qi" data-q="A6"></span> Sodium Gluconate (dissolve fully) → <span class="qi" data-q="A7"></span> C8/C10 APG → <span class="qi" data-q="A8"></span> Sodium Benzoate (dissolve fully) → <span class="qi" data-q="A9"></span> IPA 90%, added last, whisk 2 min. Keep the vessel covered between additions — IPA is flammable and evaporates quickly. Result: clear to slightly hazy, no undissolved particles.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <div class="step-head"><span class="step-title">Pre-blend Phase B</span><span class="tag tag-tool">Blend, high</span><span class="tag tag-time">3 min</span></div>
+        <div class="step-body">In a separate, clean, fully dried cup — never one that touched Phase A or any surfactant — combine <span class="qi" data-q="B1"></span> PEG-40 HCO, <span class="qi" data-q="B2"></span> Polysorbate 20, <span class="qi" data-q="B4"></span> Dimethicone, and <span class="qi" data-q="C3"></span> BHT solution. Blend on high until uniform, slightly hazy to clear.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div>
+        <div class="step-head"><span class="step-title">Add silicone emulsion</span><span class="tag tag-tool">Blend, medium</span><span class="tag tag-time">3–4 min</span></div>
+        <div class="step-body">Slowly pour <span class="qi" data-q="B3"></span> Amino Silicone Emulsion into the Step 4 pre-blend on medium speed, steadily over 3–4 min — don't dump it in. Keep the mixture cool to the touch; if it feels warm, pause and let it cool before continuing (unscheduled rest, judge by touch, not the clock).</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">6</div>
+      <div>
+        <div class="step-head"><span class="step-title">Extended homogenisation</span><span class="tag tag-tool">Blend, high</span><span class="tag tag-time" id="step6time">8–10 min</span><span class="tag tag-ccp">Critical control point</span></div>
+        <div class="step-body">Full/high speed, continuous, timed with a clock — this determines whether the emulsion holds at 1:200 dilution. Result: smooth, white to off-white, no grainy texture, no free oil/silicone sheen on the surface.</div>
+        <div class="step-fail">Reject / do not proceed if: grainy texture, any oil/silicone sheen, or the mixture is still warm to the touch. Re-blend 2–3 more minutes before moving on.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">7</div>
+      <div>
+        <div class="step-head"><span class="step-title">Combine Phase B into Phase A</span><span class="tag tag-tool">Whisk, low</span><span class="tag tag-time">3–4 min pour + 5 min mix</span><span class="tag tag-ccp">Checkpoint</span></div>
+        <div class="step-body">Slowly pour the Phase B blend into the main Phase A vessel while whisking gently on low — never the stick blender here, it can over-shear and invert the emulsion. Pour over 3–4 min, then whisk 5 more minutes.</div>
+        <div class="step-fail">Reject / do not proceed if: rings on the vessel sides, visible separation, or a thin, watery look (sign of over-shearing).</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">8</div>
+      <div>
+        <div class="step-head"><span class="step-title">Add Phase C</span><span class="tag tag-tool">Whisk, low–med</span><span class="tag tag-time">~11 min</span></div>
+        <div class="step-body">Add <span class="qi" data-q="C1"></span> Coco Glucoside, whisk 3 min. Add <span class="qi" data-q="C2"></span> CAPB, whisk 3 min. Then whisk 5 more minutes. Result: uniform milky white to light-blue liquid.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">9</div>
+      <div>
+        <div class="step-head"><span class="step-title">Add Phase D &amp; correct pH</span><span class="tag tag-tool">Whisk, low</span><span class="tag tag-time">~13 min + pH check</span><span class="tag tag-ccp">Checkpoint</span></div>
+        <div class="step-body">Add <span class="qi" data-q="D1"></span> Phenoxyethanol, whisk 3 min. Add <span class="qi" data-q="D2"></span> Ethylhexylglycerin, whisk 5 min. Check pH. Add <span class="qi" data-q="D3"></span> Citric Acid 50%, a few drops at a time, whisking and re-checking pH after each addition, until 5.5–6.0. Don't dump it all in at once — see the pH guide below.</div>
+        <div class="step-fail">Reject / do not proceed if: pH remains outside 5.5–6.0 after dropwise correction.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">10</div>
+      <div>
+        <div class="step-head"><span class="step-title">Add Phase E, top up</span><span class="tag tag-tool">Whisk, low</span><span class="tag tag-time">5 min</span></div>
+        <div class="step-body">Add <span class="qi" data-q="E2"></span> Colorant first, whisk briefly. Add <span class="qi" data-q="E1"></span> Citric Fragrance last. Top up with <span class="qi" data-q="E3"></span> distilled water to exact volume in a graduated cylinder. Whisk 5 min to fully blend.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">11</div>
+      <div>
+        <div class="step-head"><span class="step-title">Final QC &amp; bottle</span><span class="tag tag-tool">—</span><span class="tag tag-ccp">Checkpoint</span></div>
+        <div class="step-body">Check pH (5.5–6.0) and appearance (uniform colour, no rings, no separation). Bottle into clean, sealed containers, label with batch date. Gentle inversion test — invert once; should remix within seconds, no lumps or oily streaks.</div>
+        <div class="step-fail">Reject / do not proceed if: any ring, cloudy band, two-layer look, or slow/incomplete remix on inversion.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">04</span><h2>pH correction guide</h2></div>
+    <p class="note">Target for release: pH 5.5–6.0, checked at Step 9 and reconfirmed at Step 11.</p>
+    <table class="ph-table">
+      <tr><td>Above 6.0</td><td>Add D3 Citric Acid a few drops at a time (never the full amount at once). Whisk 1–2 min after each addition and re-check. Stop as soon as you're in range.</td></tr>
+      <tr><td>Below 5.5</td><td>Too much citric acid was added, usually from dosing too fast. Do not add any alkali to correct it back up — this formula has no base-correction step. Instead dilute the error out with small increments of the E3 top-up water, re-checking pH between additions. If you've used the full E3 allowance and are still under 5.5, mark the batch off-spec — don't release it.</td></tr>
+      <tr><td>Electrolyte caution</td><td>Never increase Sodium Gluconate (A6) or Sodium Benzoate (A8) beyond spec to try to fix pH or anything else — both lower the cloud point of the nonionic surfactants and can push the batch toward instability under heat.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">05</span><h2>Post-production hold checks</h2></div>
+    <p class="note">Mandatory before release — not part of active blending, these confirm the batch stays stable over time.</p>
+    <table class="ph-table">
+      <tr><td>24-hour look</td><td>Clear glass, undisturbed, room temperature, 24 hrs. Fail if any layer, ring, or cloudy band top or bottom.</td></tr>
+      <tr><td>Warm spot test</td><td>Sealed sample near a window or on a fridge top, 1 week — simulates Hyderabad transport/storage heat. Fail on any visible separation.</td></tr>
+      <tr><td>2-week shelf sample</td><td>One untouched bottle, room temp, checked Day 3 / 7 / 14. Fail at any checkpoint = batch is off-spec, do not release.</td></tr>
+    </table>
+    <p class="note" style="margin-top:10px;">A batch may not be labelled, boxed, or released until it has cleared the 24-hour look at minimum. Hold for the full warm-spot result before large production runs.</p>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">06</span><h2>Visual rejection criteria</h2></div>
+    <div class="reject-grid">
+      <div class="reject-item"><b>Creaming</b>A distinct lighter/whitish or clear layer pooling at the top near the neck — the amino silicone/dimethicone phase creaming out. Automatic reject.</div>
+      <div class="reject-item"><b>Ring / band</b>Any ring or band visible at the liquid's surface line, even faint.</div>
+      <div class="reject-item"><b>Oily streaks</b>Streaks left on the glass after a gentle inversion, or slow/incomplete remixing.</div>
+      <div class="reject-item"><b>Grainy texture</b>Gritty feel when the bottle is tilted.</div>
+    </div>
+    <table class="ph-table">
+      <tr><td>Oily layer at top</td><td>Under-blended Step 6, or B1/B3 not weighed accurately (emulsifier-to-oil ratio off).</td></tr>
+      <tr><td>Haze worsens with warmth</td><td>Electrolyte issue — A6/A8 too high, lowering cloud point. Do not increase these to fix anything else.</td></tr>
+      <tr><td>Separation right after Step 7</td><td>Cross-contamination between Phase A/B vessels, or stick blender used instead of whisk in Step 7.</td></tr>
+      <tr><td>pH drifted low, then separates</td><td>Over-acidified batch destabilising the cationic amino silicone — see the pH guide, do not add alkali.</td></tr>
+    </table>
+    <p class="note" style="margin-top:10px;">If any rejection criterion is present at any checkpoint — reject the batch. Do not re-shake or re-sell; re-blend fresh or discard.</p>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">07</span><h2>Batch release sign-off</h2></div>
+    <ul class="checklist">
+      <li><input type="checkbox"><span>Step 6 full high-speed homogenisation completed and timed</span></li>
+      <li><input type="checkbox"><span>No cross-contamination between Phase A / Phase B vessels</span></li>
+      <li><input type="checkbox"><span>A9 (IPA 90%) added in Phase A build, quantity confirmed</span></li>
+      <li><input type="checkbox"><span>Distilled water confirmed for A1 and E3 — no RO substitution used</span></li>
+      <li><input type="checkbox"><span>pH confirmed 5.5–6.0 at Step 9 and reconfirmed at Step 11</span></li>
+      <li><input type="checkbox"><span>24-hour look passed — no layer, ring, or cloudy band</span></li>
+      <li><input type="checkbox"><span>Warm spot test passed, or in progress and batch held pending result</span></li>
+      <li><input type="checkbox"><span>Inversion test passed — remixes within seconds, no streaks</span></li>
+      <li><input type="checkbox"><span>Batch date and ID labelled on all bottles</span></li>
+    </ul>
+    <div class="sign-line">
+      <div>Released by</div>
+      <div>Batch size: <span id="signVol">1 L</span></div>
+      <div>Date</div>
+    </div>
+  </section>
+
+</div>
+
+<footer>ECOVEX · EAZY SERVICES · INTERNAL MANUFACTURING &amp; QC DOCUMENT — REV 5.0</footer>
+
+<script>
+  const ING = {
+    A1:{amt:435,unit:'mL'}, F1:{amt:1.5,unit:'g'},
+    A2a:{amt:20,unit:'mL'}, A2b:{amt:10,unit:'mL'},
+    A3:{amt:35,unit:'mL'}, A4:{amt:15,unit:'mL'},
+    A5:{amt:3,unit:'g'}, A6:{amt:2,unit:'g'},
+    A7:{amt:25,unit:'mL'}, A8:{amt:2,unit:'g'},
+    A9:{amt:20,unit:'mL'},
+    B1:{amt:55,unit:'mL'}, B2:{amt:10,unit:'mL'},
+    B3:{amt:220,unit:'mL'}, B4:{amt:15,unit:'mL'},
+    C1:{amt:50,unit:'mL'}, C2:{amt:20,unit:'mL'}, C3:{amt:0.5,unit:'mL'},
+    D1:{amt:8,unit:'mL'}, D2:{amt:2,unit:'mL'},
+    D3:{low:1,high:3,unit:'mL'},
+    E1:{amt:2,unit:'mL'}, E2:{amt:1,unit:'mL'},
+    E3:{low:25,high:30,unit:'mL'}
+  };
+
+  const EQUIP_NOTES = {
+    1: "<b>Home / small-batch setup:</b> whisk + handheld stick blender is sufficient at 1 L. Mount the stick blender in a stand if possible for Step 6 consistency.",
+    2: "<b>2 L batch:</b> same whisk + stick blender setup works, but use a taller narrow vessel for Step 6 so the blade stays fully submerged. Homogenisation may need an extra 1–2 min — judge by result (no grain, no sheen), not just the clock.",
+    3: "<b>3 L batch:</b> a mounted stick blender or small rotor-stator homogenizer is recommended for Step 6 — handheld consistency gets harder to control past 2 L. Budget an extra 2–3 min on Step 6 and re-check the no-grain / no-sheen result before moving on.",
+    5: "<b>5 L batch:</b> use a fixed-stand high-shear mixer for Step 6, not a handheld stick blender — even blending across the full vessel is difficult by hand at this volume. Expect Step 6 to take meaningfully longer than the 8–10 min baseline; go by the visual/texture result, not the clock. Measuring and pouring steps will also take longer in absolute time."
+  };
+
+  function fmt(n){
+    n = Math.round(n*10)/10;
+    return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(1);
+  }
+
+  function render(scale){
+    document.querySelectorAll('[data-q]').forEach(el=>{
+      const ing = ING[el.dataset.q];
+      if(!ing) return;
+      if(ing.amt !== undefined){
+        el.textContent = fmt(ing.amt*scale) + ' ' + ing.unit;
+      } else {
+        el.textContent = fmt(ing.low*scale) + '–' + fmt(ing.high*scale) + ' ' + ing.unit;
+      }
+    });
+
+    document.getElementById('metaVol').textContent = scale + ' L';
+    document.getElementById('signVol').textContent = scale + ' L';
+
+    let timeLabel, step6;
+    if(scale <= 1){ timeLabel = '~80–90 min'; step6 = '8–10 min'; }
+    else if(scale === 2){ timeLabel = '~85–95 min'; step6 = '9–12 min'; }
+    else if(scale === 3){ timeLabel = '~90–100 min'; step6 = '10–13 min'; }
+    else { timeLabel = '~100–115 min'; step6 = '12–16 min'; }
+    document.getElementById('metaTime').textContent = timeLabel;
+    document.getElementById('step6time').textContent = step6;
+    document.getElementById('equipNote').innerHTML = EQUIP_NOTES[scale];
+
+    document.querySelectorAll('.scale-btn').forEach(b=>{
+      b.classList.toggle('active', Number(b.dataset.scale) === scale);
+    });
+  }
+
+  document.getElementById('scaleBtns').addEventListener('click', e=>{
+    const btn = e.target.closest('.scale-btn');
+    if(!btn) return;
+    render(Number(btn.dataset.scale));
+  });
+
+  render(1);
+</script>
+
+</body>
+</html>
