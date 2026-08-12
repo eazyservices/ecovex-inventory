@@ -24,6 +24,9 @@
 
 <script>
 renderNav('material-stock', 'pages', 'material');
+let stockMaterials = [];
+let stockSolutions = [];
+let reorderOnly = false;
 
 async function loadStock() {
   const content = document.getElementById('content');
@@ -37,6 +40,16 @@ async function loadStock() {
     return;
   }
 
+  stockMaterials = materials || [];
+  stockSolutions = solutions || [];
+  renderStockTables();
+}
+
+function renderStockTables() {
+  const content = document.getElementById('content');
+  const materials = stockMaterials;
+  const solutions = stockSolutions;
+
   const reorderCount = materials.filter(m => m.status === 'Reorder').length + solutions.filter(s => s.status === 'Reorder').length;
 
   let html = '';
@@ -47,23 +60,41 @@ async function loadStock() {
     html += `<p class="empty">No items yet. Add some under <a href="items.html">Manage Items</a>.</p>`;
   }
 
-  html += `<div class="section-title">Materials Stock</div>
-  <table><thead><tr><th>Item</th><th>Unit</th><th>Purchased</th><th>Issued</th><th>Available</th><th>Current Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
-  materials.forEach(m => {
-    html += `<tr><td>${escapeHtml(m.material_name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.total_purchased}</td><td>${m.total_issued}</td><td>${m.available_stock}</td><td>₹${Number(m.current_unit_cost).toFixed(2)}</td><td>${m.reorder_level}</td>
-    <td><span class="badge ${m.status === 'OK' ? 'ok' : 'reorder'}">${m.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
-  });
-  html += `</tbody></table>`;
+  html += `<label class="filter-row"><input type="checkbox" id="reorder-only-toggle" ${reorderOnly ? 'checked' : ''}> Show only items needing reorder</label>`;
 
-  html += `<div class="section-title">Solutions Stock (Litres)</div>
-  <table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Available (Bottles)</th><th>Current Cost/L</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
-  solutions.forEach(s => {
-    html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${s.available_bottles != null ? Number(s.available_bottles).toFixed(1) : '—'}</td><td>₹${Number(s.current_cost_per_litre).toFixed(2)}</td><td>${s.reorder_level_l}</td>
-    <td><span class="badge ${s.status === 'OK' ? 'ok' : 'reorder'}">${s.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
-  });
-  html += `</tbody></table>`;
+  const materialRows = reorderOnly ? materials.filter(m => m.status === 'Reorder') : materials;
+  const solutionRows = reorderOnly ? solutions.filter(s => s.status === 'Reorder') : solutions;
+
+  html += `<div class="section-title">Materials Stock</div>`;
+  if (materialRows.length === 0) {
+    html += `<p class="empty">${reorderOnly ? 'No materials at or below reorder level right now.' : 'No materials yet.'}</p>`;
+  } else {
+    html += `<table><thead><tr><th>Item</th><th>Unit</th><th>Purchased</th><th>Issued</th><th>Available</th><th>Current Cost/Unit</th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>`;
+    materialRows.forEach(m => {
+      html += `<tr><td>${escapeHtml(m.material_name)}</td><td>${escapeHtml(m.unit)}</td><td>${m.total_purchased}</td><td>${m.total_issued}</td><td>${m.available_stock}</td><td>₹${Number(m.current_unit_cost).toFixed(2)}</td><td>${m.reorder_level}</td>
+      <td><span class="badge ${m.status === 'OK' ? 'ok' : 'reorder'}">${m.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+
+  html += `<div class="section-title">Solutions Stock (Litres)</div>`;
+  if (solutionRows.length === 0) {
+    html += `<p class="empty">${reorderOnly ? 'No solutions at or below reorder level right now.' : 'No solutions yet.'}</p>`;
+  } else {
+    html += `<table><thead><tr><th>Solution</th><th>Bottle Size</th><th>Total In (L)</th><th>Issued (L)</th><th>Available (L)</th><th>Available (Bottles)</th><th>Current Cost/L</th><th>Reorder (L)</th><th>Status</th></tr></thead><tbody>`;
+    solutionRows.forEach(s => {
+      html += `<tr><td>${escapeHtml(s.solution_name)}</td><td>${s.bottle_size_ml}ml bottle</td><td>${Number(s.total_in_l).toFixed(2)}</td><td>${Number(s.total_issued_l).toFixed(2)}</td><td>${Number(s.available_l).toFixed(2)}</td><td>${s.available_bottles != null ? Number(s.available_bottles).toFixed(1) : '—'}</td><td>₹${Number(s.current_cost_per_litre).toFixed(2)}</td><td>${s.reorder_level_l}</td>
+      <td><span class="badge ${s.status === 'OK' ? 'ok' : 'reorder'}">${s.status === 'OK' ? '✔ OK' : '⚠ Reorder'}</span></td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
 
   content.innerHTML = html;
+
+  document.getElementById('reorder-only-toggle').addEventListener('change', (e) => {
+    reorderOnly = e.target.checked;
+    renderStockTables();
+  });
 }
 
 loadStock();
