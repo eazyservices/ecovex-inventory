@@ -299,7 +299,7 @@
       <table class="ing-table">
         <tr><th>ID</th><th>Ingredient</th><th>Qty</th><th>Note</th></tr>
         <tr><td class="ing-id">B1</td><td>PEG-40 Hydrogenated Castor Oil</td><td class="qty" data-q="B1"></td><td class="ing-note">Primary emulsifier — weigh exactly.</td></tr>
-        <tr><td class="ing-id">B2</td><td>Polysorbate 20</td><td class="qty" data-q="B2"></td><td class="ing-note">Must be PS-20, not PS-80.</td></tr>
+        <tr><td class="ing-id">B2</td><td>Polysorbate 20</td><td class="qty" data-q="B2"></td><td class="ing-note">Must be PS-20, not PS-80. A separate small portion (not this one) is reserved in Phase E to premix the fragrance — see below.</td></tr>
         <tr><td class="ing-id">B3</td><td>Amino Silicone Emulsion</td><td class="qty" data-q="B3"></td><td class="ing-note">Confirm active % before use.</td></tr>
         <tr><td class="ing-id">B4</td><td>Dimethicone 200–350 cSt</td><td class="qty" data-q="B4"></td><td class="ing-note"></td></tr>
       </table>
@@ -329,9 +329,10 @@
       <span class="phase-title">Phase E — Final Adjustment</span>
       <table class="ing-table">
         <tr><th>ID</th><th>Ingredient</th><th>Qty</th><th>Note</th></tr>
-        <tr><td class="ing-id">E1</td><td>Citric Fragrance (water-soluble)</td><td class="qty" data-q="E1"></td><td class="ing-note"></td></tr>
+        <tr><td class="ing-id">EP</td><td>Polysorbate 20 (fragrance premix)</td><td class="qty" data-q="EP"></td><td class="ing-note">Separate from the 10 mL/L used in Phase B — reserved to pre-dissolve the fragrance below. Whisk the two together in a small dish until one clear, uniform liquid before adding to the batch.</td></tr>
+        <tr><td class="ing-id">E1</td><td>Fragrance Oil (oil-based)</td><td class="qty" data-q="E1"></td><td class="ing-note">Oil-based, not water-soluble. Premix with the Polysorbate 20 above first — do not add neat.</td></tr>
         <tr><td class="ing-id">E2</td><td>Colorant (water-soluble)</td><td class="qty" data-q="E2"></td><td class="ing-note">Avoid oil-dispersible colorants.</td></tr>
-        <tr><td class="ing-id">E3</td><td>Distilled water — final top-up</td><td class="qty" data-q="E3"></td><td class="ing-note">Top up to exact volume in a graduated cylinder.</td></tr>
+        <tr><td class="ing-id">E3</td><td>Distilled water — final top-up</td><td class="qty" data-q="E3"></td><td class="ing-note">Top up to exact volume in a graduated cylinder — top up toward the lower end of the range below, since the fragrance premix above adds a little extra volume.</td></tr>
       </table>
     </div>
   </section>
@@ -420,7 +421,7 @@
       <div class="step-num">10</div>
       <div>
         <div class="step-head"><span class="step-title">Add Phase E, top up</span><span class="tag tag-tool">Whisk, low</span><span class="tag tag-time">5 min</span></div>
-        <div class="step-body">Add <span class="qi" data-q="E2"></span> Colorant first, whisk briefly. Add <span class="qi" data-q="E1"></span> Citric Fragrance last. Top up with <span class="qi" data-q="E3"></span> distilled water to exact volume in a graduated cylinder. Whisk 5 min to fully blend.</div>
+        <div class="step-body">Add <span class="qi" data-q="E2"></span> Colorant first, whisk briefly. In a small dish, whisk <span class="qi" data-q="EP"></span> Polysorbate 20 with <span class="qi" data-q="E1"></span> Fragrance Oil until one clear, uniform liquid — do not add the fragrance neat. Stir the premix into the batch last. Top up with <span class="qi" data-q="E3"></span> distilled water to exact volume in a graduated cylinder. Whisk 5 min to fully blend.</div>
       </div>
     </div>
 
@@ -509,7 +510,7 @@
     C1:{amt:50,unit:'mL'}, C2:{amt:20,unit:'mL'}, C3:{amt:0.5,unit:'mL'},
     D1:{amt:8,unit:'mL'}, D2:{amt:2,unit:'mL'},
     D3:{low:1,high:3,unit:'mL'},
-    E1:{amt:2,unit:'mL'}, E2:{amt:1,unit:'mL'},
+    EP:{amt:4,unit:'mL'}, E1:{amt:2,unit:'mL'}, E2:{amt:1,unit:'mL'},
     E3:{low:25,high:30,unit:'mL'}
   };
 
